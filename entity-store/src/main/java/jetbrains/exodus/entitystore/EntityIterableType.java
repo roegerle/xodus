@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,14 @@ public enum EntityIterableType {
     FILTER_ENTITY_TYPE("Filter source iterable by entity type", 28),
     FILTER_LINKS("Filter source iterable by links set", 29),
     ENTITIES_WITH_CERTAIN_LINK("All entities of specified type with certain link", 30),
-    ALL_ENTITIES_RANGE("Entities of specific type within id range", 31);
+    ALL_ENTITIES_RANGE("Entities of specific type within id range", 31),
+    ENTITIES_WITH_PROP_CONTAINING_VALUE("Entities with string property containing a value", 32) {
+        @Override
+        public boolean isPropertyIndex() {
+            return true;
+        }
+    };
+
 
     private final String description;
     private final int type;
@@ -92,5 +99,4 @@ public enum EntityIterableType {
     public boolean isPropertyIndex() {
         return false;
     }
-
 }

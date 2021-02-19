@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,7 +74,7 @@ public class EntityFromLinkSetTests extends EntityStoreTestBase {
         }
     }
 
-    @TestFor(issues = "XD-669")
+    @TestFor(issue = "XD-669")
     public void testCached() {
         final StoreTransaction txn = getStoreTransaction();
         final Entity i1 = txn.newEntity("Issue");

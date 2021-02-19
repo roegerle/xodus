@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ public class EntityBlobTests extends EntityStoreTestBase {
         Assert.assertEquals("my body2", entity.getBlobString("body2"));
     }
 
-    @TestFor(issues = "XD-675")
+    @TestFor(issue = "XD-675")
     public void testBlobFiles2() throws Exception {
         getEntityStore().getConfig().setMaxInPlaceBlobSize(0);
         testBlobFiles();
@@ -120,7 +120,7 @@ public class EntityBlobTests extends EntityStoreTestBase {
         Assert.assertEquals("абвгдеёжзийклмнопрстуфхкцчшщъыьэюя", issue.getBlobString("description"));
     }
 
-    @TestFor(issues = "JT-44824")
+    @TestFor(issue = "JT-44824")
     public void testLargeBlobString() {
         StringBuilder builder = new StringBuilder();
         final int blobStringSize = 80000;
@@ -226,7 +226,7 @@ public class EntityBlobTests extends EntityStoreTestBase {
         Assert.assertFalse(wereExceptions[0]);
     }
 
-    @TestFor(issues = "XD-531")
+    @TestFor(issue = "XD-531")
     public void testEntityStoreClear() {
         final PersistentEntityStoreImpl store = getEntityStore();
         store.getConfig().setMaxInPlaceBlobSize(0);
@@ -247,13 +247,19 @@ public class EntityBlobTests extends EntityStoreTestBase {
     private static void checkBlobs(StoreTransaction txn) throws IOException {
         final Entity entity = txn.newEntity("Issue");
         Assert.assertNull(entity.getBlob("body"));
+        Assert.assertEquals(-1L, entity.getBlobSize("body"));
         final int length = "body".getBytes().length;
         entity.setBlob("body", string2Stream("body"));
+        entity.setBlob("body2", createTempFile("body"));
         Assert.assertTrue(TestUtil.streamsEqual(entity.getBlob("body"), string2Stream("body")));
         Assert.assertEquals(length, entity.getBlobSize("body"));
+        Assert.assertEquals("body", entity.getBlobString("body2"));
+        Assert.assertEquals(length + 2, entity.getBlobSize("body2"));
         txn.flush();
         Assert.assertTrue(TestUtil.streamsEqual(entity.getBlob("body"), string2Stream("body")));
         Assert.assertEquals(length, entity.getBlobSize("body"));
+        Assert.assertEquals("body", entity.getBlobString("body2"));
+        Assert.assertEquals(length + 2, entity.getBlobSize("body2"));
     }
 
     private static File createTempFile(String content) throws IOException {

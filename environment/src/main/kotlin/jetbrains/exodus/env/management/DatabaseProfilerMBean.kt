@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package jetbrains.exodus.env.management;
+package jetbrains.exodus.env.management
 
-import jetbrains.exodus.env.EnvironmentImpl;
-import org.jetbrains.annotations.NotNull;
+const val PROFILER_OBJECT_NAME_PREFIX = "jetbrains.exodus.env: type=DatabaseProfiler"
 
-public class EnvironmentConfigWithOperations extends EnvironmentConfig {
-
-    public EnvironmentConfigWithOperations(@NotNull final EnvironmentImpl env) {
-        super(env);
-    }
-
-    @Override
-    public void close() {
-        env.close();
-        super.close();
-    }
-
-    public void clean() {
-        env.clear();
-    }
+interface DatabaseProfilerMBean {
+    fun reset()
+    fun dump()
 }

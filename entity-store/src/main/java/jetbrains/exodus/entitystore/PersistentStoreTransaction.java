@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.BiFunction;
 
 @SuppressWarnings({"rawtypes"})
 public class PersistentStoreTransaction implements StoreTransaction, TxnGetterStrategy, TxnProvider {
@@ -135,6 +136,17 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
             default:
                 throw new EntityStoreException("Can't create " + txnType + " transaction");
         }
+    }
+
+    protected PersistentStoreTransaction(@NotNull final PersistentEntityStoreImpl store,
+                                         final long highAddress) {
+        this.store = store;
+        final PersistentEntityStoreConfig config = store.getConfig();
+        propsCache = createObjectCache(config.getTransactionPropsCacheSize());
+        linksCache = createObjectCache(config.getTransactionLinksCacheSize());
+        blobStringsCache = createObjectCache(config.getTransactionBlobStringsCacheSize());
+        localCacheAttempts = localCacheHits = 0;
+        txn = ((EnvironmentImpl) store.getEnvironment()).beginTransactionAt(highAddress);
     }
 
     @Override
@@ -306,30 +318,26 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
     public EntityIterable find(@NotNull final String entityType,
                                @NotNull final String propertyName,
                                @NotNull final Comparable value) {
-        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
-        if (entityTypeId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        final int propertyId = store.getPropertyId(this, propertyName, false);
-        if (propertyId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        return new PropertyValueIterable(this, entityTypeId, propertyId, value);
+        return getPropertyIterable(entityType, propertyName, (entityTypeId, propertyId) ->
+            new PropertyValueIterable(this, entityTypeId, propertyId, value));
     }
 
     @Override
     @NotNull
     public EntityIterable find(@NotNull final String entityType, @NotNull final String propertyName,
                                @NotNull final Comparable minValue, @NotNull final Comparable maxValue) {
-        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
-        if (entityTypeId < 0) {
-            return EntityIterableBase.EMPTY;
+        return getPropertyIterable(entityType, propertyName, (entityTypeId, propertyId) ->
+            new PropertyRangeIterable(this, entityTypeId, propertyId, minValue, maxValue));
+    }
+
+    @Override
+    public @NotNull EntityIterable findContaining(@NotNull final String entityType, @NotNull final String propertyName,
+                                                  @NotNull final String value, final boolean ignoreCase) {
+        if (value.isEmpty()) {
+            return findWithPropSortedByValue(entityType, propertyName);
         }
-        final int propertyId = store.getPropertyId(this, propertyName, false);
-        if (propertyId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        return new PropertyRangeIterable(this, entityTypeId, propertyId, minValue, maxValue);
+        return getPropertyIterable(entityType, propertyName, (entityTypeId, propertyId) ->
+            new PropertyContainsValueEntityIterable(this, entityTypeId, propertyId, value, ignoreCase));
     }
 
     @Override
@@ -345,27 +353,13 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
     @NotNull
     @Override
     public EntityIterableBase findWithProp(@NotNull final String entityType, @NotNull final String propertyName) {
-        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
-        if (entityTypeId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        final int propertyId = store.getPropertyId(this, propertyName, false);
-        if (propertyId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        return new EntitiesWithPropertyIterable(this, entityTypeId, propertyId);
+        return getPropertyIterable(entityType, propertyName, (entityTypeId, propertyId) ->
+            new EntitiesWithPropertyIterable(this, entityTypeId, propertyId));
     }
 
     public EntityIterableBase findWithPropSortedByValue(@NotNull final String entityType, @NotNull final String propertyName) {
-        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
-        if (entityTypeId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        final int propertyId = store.getPropertyId(this, propertyName, false);
-        if (propertyId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        return new PropertiesIterable(this, entityTypeId, propertyId);
+        return getPropertyIterable(entityType, propertyName, (entityTypeId, propertyId) ->
+            new PropertiesIterable(this, entityTypeId, propertyId));
     }
 
     @Override
@@ -383,15 +377,8 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
     @NotNull
     @Override
     public EntityIterable findWithBlob(@NotNull final String entityType, @NotNull final String blobName) {
-        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
-        if (entityTypeId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        final int blobId = store.getPropertyId(this, blobName, false);
-        if (blobId < 0) {
-            return EntityIterableBase.EMPTY;
-        }
-        return new EntitiesWithBlobIterable(this, entityTypeId, blobId);
+        return getPropertyIterable(entityType, blobName, (entityTypeId, blobId) ->
+            new EntitiesWithBlobIterable(this, entityTypeId, blobId));
     }
 
     @Override
@@ -576,6 +563,15 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
     public Sequence getSequence(@NotNull final String sequenceName) {
         try {
             return store.getSequence(this, sequenceName);
+        } catch (Exception e) {
+            throw ExodusException.wrap(e);
+        }
+    }
+
+    @Override
+    public @NotNull Sequence getSequence(@NotNull final String sequenceName, final long initialValue) {
+        try {
+            return store.getSequence(this, sequenceName, initialValue);
         } catch (Exception e) {
             throw ExodusException.wrap(e);
         }
@@ -937,10 +933,24 @@ public class PersistentStoreTransaction implements StoreTransaction, TxnGetterSt
         }
     }
 
+    private EntityIterableBase getPropertyIterable(@NotNull final String entityType,
+                                                   @NotNull final String propertyName,
+                                                   @NotNull final BiFunction<Integer, Integer, EntityIterableBase> instantiator) {
+        final int entityTypeId = store.getEntityTypeId(this, entityType, false);
+        if (entityTypeId < 0) {
+            return EntityIterableBase.EMPTY;
+        }
+        final int propertyId = store.getPropertyId(this, propertyName, false);
+        if (propertyId < 0) {
+            return EntityIterableBase.EMPTY;
+        }
+        return instantiator.apply(entityTypeId, propertyId);
+    }
+
     @SuppressWarnings("unchecked")
-    public static <T> T getUpdatable(
-        @NotNull final HandleChecker handleChecker, @NotNull final EntityIterableHandle handle, @NotNull final Class<T> handleType
-    ) {
+    public static <T> T getUpdatable(@NotNull final HandleChecker handleChecker,
+                                     @NotNull final EntityIterableHandle handle,
+                                     @NotNull final Class<T> handleType) {
         final HandleCheckerAdapter checker = (HandleCheckerAdapter) handleChecker;
         Updatable instance = checker.get(handle);
         if (instance != null) {

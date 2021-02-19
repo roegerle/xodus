@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,25 @@
 package jetbrains.exodus.env;
 
 import jetbrains.exodus.ExodusException;
+import jetbrains.exodus.debug.StackTrace;
+import org.jetbrains.annotations.Nullable;
 
 public class TransactionFinishedException extends ExodusException {
 
-    private final Throwable trace;
+    @Nullable
+    private final StackTrace trace;
 
-    TransactionFinishedException(Throwable trace) {
+    TransactionFinishedException() {
+        this(null);
+    }
+
+    TransactionFinishedException(@Nullable StackTrace trace) {
         super("Transaction is already finished");
         this.trace = trace;
     }
 
-    public Throwable getTrace() {
+    @Nullable
+    public StackTrace getTrace() {
         return trace;
     }
 }

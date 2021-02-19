@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Iterates all entities of specified entity type having specified property equal to a value.
  */
-@SuppressWarnings({"unchecked"})
+@SuppressWarnings({"unchecked", "rawtypes"})
 public final class PropertyValueIterable extends PropertyRangeOrValueIterableBase {
 
     @NotNull
@@ -122,7 +122,7 @@ public final class PropertyValueIterable extends PropertyRangeOrValueIterableBas
 
             @Override
             public int getEntityTypeId() {
-                return PropertyValueIterable.this.getEntityTypeId();
+                return entityTypeId;
             }
 
             @Override

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,9 +77,9 @@ public class ObjectCache<K, V> extends ObjectCacheBase<K, V> {
             protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
                 final boolean result = size() > secondGenSizeBound;
                 if (result) {
-                    --size;
+                    --_size;
                     firstGenerationQueue.put(eldest.getKey(), eldest.getValue());
-                    ++size;
+                    ++_size;
                 }
                 return result;
             }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ package jetbrains.exodus.env
 import jetbrains.exodus.core.execution.Job
 import jetbrains.exodus.core.execution.ThreadJobProcessorPool
 import mu.KLogging
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 import java.lang.ref.WeakReference
 import java.util.*
 
@@ -42,16 +40,12 @@ internal class StuckTransactionMonitor(env: EnvironmentImpl) : Job() {
         if (env != null && env.isOpen) {
             var stuckTxnCount = 0
             try {
-                env.transactionTimeout().forEachExpiredTransaction {
-                    val trace = it.trace
-                    if (trace != null) {
-                        val creatingThread = it.creatingThread
-                        val out = ByteArrayOutputStream()
-                        val ps = PrintStream(out)
-                        val msg = "Transaction timed out: created at ${Date(it.startTime)}, thread = $creatingThread(${creatingThread.id})"
-                        ps.writer().write(msg)
-                        trace.printStackTrace(ps)
-                        logger.info(msg, trace)
+                env.transactionTimeout().forEachExpiredTransaction { txn ->
+                    txn.trace?.let { trace ->
+                        val creatingThread = txn.creatingThread
+                        val msg = "Transaction timed out: created at ${Date(txn.startTime)}, " +
+                                "thread = $creatingThread(${creatingThread.id})\n$trace"
+                        logger.info(msg)
                         ++stuckTxnCount
                     }
                 }

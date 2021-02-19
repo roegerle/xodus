@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -245,7 +245,7 @@ public class CompressBackupUtil {
         }
         final InputStream input = source.getInputStream();
         try {
-            IOUtil.copyStreams(input, fileSize, out, IOUtil.BUFFER_ALLOCATOR);
+            IOUtil.copyStreams(input, fileSize, out, IOUtil.getBUFFER_ALLOCATOR());
         } finally {
             if (source.shouldCloseStream()) {
                 input.close();

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,7 +166,14 @@ class EntityIdSetIterable(txn: PersistentStoreTransaction) : EntityIterableBase(
     var ids: EntityIdSet = EntityIdSetFactory.newSet()
 
     override fun getIteratorImpl(txn: PersistentStoreTransaction): EntityIterator {
-        throw NotImplementedError()
+        return object : EntityIteratorBase(this) {
+
+            val it = ids.iterator()
+
+            override fun hasNextImpl() = it.hasNext()
+
+            override fun nextIdImpl() = it.next()
+        }
     }
 
     override fun getHandleImpl(): EntityIterableHandle {
@@ -184,6 +191,8 @@ class EntityIdSetIterable(txn: PersistentStoreTransaction) : EntityIterableBase(
     override fun getRoughCount() = ids.count().toLong()
 
     override fun getRoughSize() = ids.count().toLong()
+
+    override fun isSortedById() = false
 
     override fun toSet(txn: PersistentStoreTransaction) = ids
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import jetbrains.exodus.core.crypto.MessageDigestUtil
 import jetbrains.exodus.core.execution.ThreadJobProcessorPool
 import jetbrains.exodus.javascript.RhinoCommand.Companion.CONSOLE
 import mu.KLogging
-import org.apache.sshd.SshServer
-import org.apache.sshd.server.PasswordAuthenticator
-import org.apache.sshd.server.keyprovider.PEMGeneratorHostKeyProvider
+import org.apache.sshd.common.keyprovider.FileKeyPairProvider
+import org.apache.sshd.server.SshServer
+import org.apache.sshd.server.auth.password.PasswordAuthenticator
 import java.io.Closeable
-import java.io.File
+import java.nio.file.Paths
 
 class RhinoServer(config: Map<String, *>, port: Int = 2808, password: String? = null) : Closeable {
 
@@ -41,7 +41,7 @@ class RhinoServer(config: Map<String, *>, port: Int = 2808, password: String? = 
                     if (password == null) "with anonymous access" else ", password hash = $passwordMD5"
         }
         sshd = SshServer.setUpDefaultServer().apply {
-            keyPairProvider = PEMGeneratorHostKeyProvider(File(System.getProperty("user.home"), ".xodus.ser").absolutePath, "RSA")
+            keyPairProvider = FileKeyPairProvider(Paths.get(System.getProperty("user.home"), ".xodus.ser"))
             passwordAuthenticator = PasswordAuthenticator { _, password, _ ->
                 passwordMD5 == null || passwordMD5 == MessageDigestUtil.MD5(password)
             }
@@ -49,7 +49,7 @@ class RhinoServer(config: Map<String, *>, port: Int = 2808, password: String? = 
             setPort(port)
             // if we 're within console then setup infinite session timeout
             if (config[CONSOLE] == true) {
-                properties[SshServer.IDLE_TIMEOUT] = Long.MAX_VALUE.toString()
+                properties["idle-timeout"] = Long.MAX_VALUE.toString()
             }
             start()
         }

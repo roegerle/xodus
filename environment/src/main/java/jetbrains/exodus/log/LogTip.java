@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,13 +52,22 @@ public class LogTip {
     }
 
     // non-empty
-    public LogTip(@NotNull byte[] bytes, long pageAddress, int count, long highAddress, long approvedHighAddress, @NotNull final BlockSet.Immutable blockSet) {
+    public LogTip(@NotNull byte[] bytes,
+                  long pageAddress,
+                  int count,
+                  long highAddress,
+                  long approvedHighAddress,
+                  @NotNull final BlockSet.Immutable blockSet) {
         this.bytes = bytes;
         this.pageAddress = pageAddress;
         this.count = count;
         this.highAddress = highAddress;
         this.approvedHighAddress = approvedHighAddress;
         this.blockSet = blockSet;
+    }
+
+    public LogTip asTruncatedTo(final long highAddress) {
+        return new LogTip(bytes, pageAddress, count, highAddress, highAddress, blockSet);
     }
 
     LogTip withApprovedAddress(long updatedApprovedHighAddress) {

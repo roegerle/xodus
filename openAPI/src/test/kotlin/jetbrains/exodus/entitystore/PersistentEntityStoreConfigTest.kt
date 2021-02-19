@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@ import org.junit.Test
 class PersistentEntityStoreConfigTest {
 
     @Test(expected = ExodusException::class)
-    @TestFor(issues = ["XD-704"])
+    @TestFor(issue = "XD-704")
     fun mutateDefaultConfig() {
         PersistentEntityStoreConfig.DEFAULT.isCachingDisabled = false
     }
 
     @Test(expected = ExodusException::class)
-    @TestFor(issues = ["XD-704"])
+    @TestFor(issue = "XD-704")
     fun makeDefaultConfigMutable() {
         PersistentEntityStoreConfig.DEFAULT.isMutable = true
     }

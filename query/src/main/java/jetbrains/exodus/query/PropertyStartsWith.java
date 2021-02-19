@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,16 +22,13 @@ import jetbrains.exodus.query.metadata.ModelMetaData;
 import static jetbrains.exodus.query.Utils.safe_equals;
 
 public class PropertyStartsWith extends NodeBase {
+
     private final String name;
     private final String starts;
 
     public PropertyStartsWith(String name, String starts) {
         this.name = name;
         this.starts = starts;
-    }
-
-    public String getStarts() {
-        return starts;
     }
 
     @Override
@@ -65,8 +62,8 @@ public class PropertyStartsWith extends NodeBase {
         if (!(obj instanceof PropertyStartsWith)) {
             return false;
         }
-        PropertyStartsWith propertyStartsWith = (PropertyStartsWith) obj;
-        return safe_equals(name, propertyStartsWith.name) && safe_equals(starts, propertyStartsWith.starts);
+        PropertyStartsWith right = (PropertyStartsWith) obj;
+        return safe_equals(name, right.name) && safe_equals(starts, right.starts);
     }
 
     @Override

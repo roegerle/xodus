@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -195,6 +195,15 @@ public class QueryTreeTest extends EntityStoreTestBase {
         Assert.assertNotEquals(propertyEqual, node);
     }
 
+    public void testPropertyContains() {
+        NodeBase node = getOptimizedTree(new PropertyContains("s", "", true));
+        Assert.assertEquals(NodeFactory.all(), node);
+        node = getOptimizedTree(new PropertyContains("s", null, true));
+        Assert.assertEquals(NodeFactory.all(), node);
+        Assert.assertNotEquals(node, propertyEqual);
+        Assert.assertNotEquals(propertyEqual, node);
+    }
+
     public void testPropertyRange() {
         NodeBase node = getOptimizedTree(and(and(new PropertyRange("string", "aa", "pq"), new PropertyRange("string", "d", "pz")), new PropertyRange("1string", "1d", "1pz")));
         Assert.assertEquals(and(new PropertyRange("string", "d", "pq"), new PropertyRange("1string", "1d", "1pz")), node);
@@ -252,7 +261,7 @@ public class QueryTreeTest extends EntityStoreTestBase {
         Assert.assertEquals(or(and(or(a, d), b), c), getOptimizedTree(tree));
     }
 
-    @TestFor(issues = "XD-694")
+    @TestFor(issue = "XD-694")
     public void testNestedAnd() {
         final PropertyEqual a = new PropertyEqual("s", "A");
         final PropertyEqual b = new PropertyEqual("s", "B");

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -413,7 +413,7 @@ public abstract class TreePutTest extends TreeBaseTest {
     }
 
     @Test
-    @TestFor(issues = "XD-539")
+    @TestFor(issue = "XD-539")
     public void createHugeTree() throws Throwable {
         if (Runtime.getRuntime().maxMemory() < 4000000000L) {
             return;

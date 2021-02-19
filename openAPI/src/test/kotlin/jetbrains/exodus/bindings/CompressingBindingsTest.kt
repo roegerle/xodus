@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ class CompressingBindingsTest {
     }
 
     @Test
-    @TestFor(issues = arrayOf("XD-537"))
+    @TestFor(issue = "XD-537")
     fun testSignedLongs() {
         Assert.assertEquals(1, signedLongToCompressedEntry(-1L).length.toLong())
         assertSignedLong(-1L)
@@ -118,7 +118,7 @@ class CompressingBindingsTest {
     }
 
     @Test
-    @TestFor(issues = arrayOf("XD-537"))
+    @TestFor(issue = "XD-537")
     fun testSignedInts() {
         Assert.assertEquals(1, signedIntToCompressedEntry(-1).length.toLong())
         assertSignedInt(-1)

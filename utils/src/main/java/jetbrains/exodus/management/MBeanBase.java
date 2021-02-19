@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ public abstract class MBeanBase {
         this.runOnClose = runnable;
     }
 
-    protected static String escapeLocation(@NotNull final String location) {
+    public static String escapeLocation(@NotNull final String location) {
         return location.indexOf(':') >= 0 ? location.replace(':', '@') : location;
     }
 }

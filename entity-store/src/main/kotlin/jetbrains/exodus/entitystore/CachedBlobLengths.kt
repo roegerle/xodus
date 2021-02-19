@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import kotlin.math.max
 class CachedBlobLengths(private val env: Environment,
                         private val blobFileLengths: Store) : VaultSizeFunctions {
 
-    private val blockSize = IOUtil.getBlockSize()
+    private val blockSize = IOUtil.blockSize
 
     override fun getBlobVaultSize(): Long {
         return if (env.isOpen) {

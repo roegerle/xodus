@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ final class SharedMappedByteBuffer implements Closeable {
     @Override
     public void close() {
         if (clients.decrementAndGet() < 0) {
-            SafeByteBufferCleaner.INSTANCE.clean(buffer);
+            SafeByteBufferCleaner.clean(buffer);
         }
     }
 }

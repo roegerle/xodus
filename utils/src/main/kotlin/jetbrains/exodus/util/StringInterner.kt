@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ class StringInterner private constructor(size: Int = INTERNER_SIZE) {
 
     companion object {
 
-        private const val NUMBER_OF_GENERATIONS = 3
+        private val NUMBER_OF_GENERATIONS = Integer.getInteger("exodus.util.stringInternerNumberOfGenerations", 5)
         private val MAX_SIZE_OF_CACHED_STRING = Integer.getInteger("exodus.util.stringInternerMaxEntrySize", 1000)
         private val INTERNER_SIZE = Integer.getInteger("exodus.util.stringInternerCacheSize", 15991 * NUMBER_OF_GENERATIONS)
         private val DEFAULT_INTERNER = StringInterner()

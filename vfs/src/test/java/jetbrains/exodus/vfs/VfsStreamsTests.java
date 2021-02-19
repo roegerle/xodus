@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -417,7 +417,7 @@ public class VfsStreamsTests extends VfsTestsBase {
     }
 
     @Test
-    @TestFor(issues = "XD-624")
+    @TestFor(issue = "XD-624")
     public void testWriteAndSeek2() throws IOException {
         Transaction txn = env.beginTransaction();
         vfs.getConfig().setClusteringStrategy(new ClusteringStrategy.LinearClusteringStrategy(8));
@@ -436,7 +436,7 @@ public class VfsStreamsTests extends VfsTestsBase {
     }
 
     @Test
-    @TestFor(issues = "XD-624")
+    @TestFor(issue = "XD-624")
     public void testWriteAndSeek3() throws IOException {
         Transaction txn = env.beginTransaction();
         vfs.getConfig().setClusteringStrategy(new ClusteringStrategy.LinearClusteringStrategy(8));

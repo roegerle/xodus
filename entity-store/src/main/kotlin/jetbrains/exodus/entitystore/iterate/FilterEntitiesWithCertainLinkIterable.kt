@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,17 +28,6 @@ internal class FilterEntitiesWithCertainLinkIterable(txn: PersistentStoreTransac
     private val filter: EntityIterableBase = filter.source
 
     val linkId: Int get() = entitiesWithLink.linkId
-
-    override fun intersect(right: EntityIterable): EntityIterable {
-        if (right is FilterEntitiesWithCertainLinkIterable) {
-            if ((entitiesWithLink === right.entitiesWithLink) ||
-                    (linkId == right.linkId && entityTypeId == right.entityTypeId)) {
-                return FilterEntitiesWithCertainLinkIterable(
-                        transaction, entitiesWithLink, filter.intersect(right.filter) as EntityIterableBase)
-            }
-        }
-        return super.intersect(right)
-    }
 
     override fun union(right: EntityIterable): EntityIterable {
         if (right is FilterEntitiesWithCertainLinkIterable) {

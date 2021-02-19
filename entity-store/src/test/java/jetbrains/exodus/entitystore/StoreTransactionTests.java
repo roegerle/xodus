@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -132,20 +132,20 @@ public class StoreTransactionTests extends EntityStoreTestBase {
         Assert.assertEquals("it's ok", getEntityStore().computeInReadonlyTransaction(txn1 -> issue.getProperty("summary")));
     }
 
-    @TestFor(issues = "XD-495")
+    @TestFor(issue = "XD-495")
     public void testNewEntityInReadonlyTransaction() {
         setReadonly();
         TestUtil.runWithExpectedException(() -> getEntityStore().executeInTransaction(txn -> txn.newEntity("Issue")), ReadonlyTransactionException.class);
     }
 
-    @TestFor(issues = "XD-495")
+    @TestFor(issue = "XD-495")
     public void testNewEntityInReadonlyTransaction2() {
         getEntityStore().executeInTransaction(txn -> txn.newEntity("Issue"));
         setReadonly();
         TestUtil.runWithExpectedException(() -> getEntityStore().executeInTransaction(txn -> txn.newEntity("Issue")), ReadonlyTransactionException.class);
     }
 
-    @TestFor(issues = "XD-495")
+    @TestFor(issue = "XD-495")
     public void testNewEntityInReadonlyTransaction3() {
         getEntityStore().executeInTransaction(txn -> txn.newEntity("Issue"));
         setReadonly();

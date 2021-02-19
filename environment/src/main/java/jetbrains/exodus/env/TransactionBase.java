@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package jetbrains.exodus.env;
 
 import jetbrains.exodus.core.dataStructures.decorators.HashMapDecorator;
 import jetbrains.exodus.core.dataStructures.hash.IntHashMap;
+import jetbrains.exodus.debug.StackTrace;
 import jetbrains.exodus.tree.ITree;
 import jetbrains.exodus.tree.TreeMetaInfo;
 import org.jetbrains.annotations.NotNull;
@@ -31,6 +32,9 @@ import java.util.Map;
 public abstract class TransactionBase implements Transaction {
 
     @NotNull
+    private static final StackTrace EMPTY_TRACE = new StackTrace(new StackTraceElement[0]);
+
+    @NotNull
     private final EnvironmentImpl env;
     @NotNull
     private final Thread creatingThread;
@@ -40,14 +44,13 @@ public abstract class TransactionBase implements Transaction {
     @NotNull
     private final Map<Object, Object> userObjects;
     @Nullable
-    private final Throwable trace;
+    private final StackTrace trace;
     private final long created; // created is the ticks when the txn was actually created (constructed)
     private long started;       // started is the ticks when the txn held its current snapshot
     private boolean isExclusive;
     private final boolean wasCreatedExclusive;
     @Nullable
-    private Throwable traceFinish;
-    private int acquiredPermits;
+    private StackTrace traceFinish;
 
     public TransactionBase(@NotNull final EnvironmentImpl env, final boolean isExclusive) {
         this.env = env;
@@ -56,7 +59,7 @@ public abstract class TransactionBase implements Transaction {
         wasCreatedExclusive = isExclusive;
         immutableTrees = new IntHashMap<>();
         userObjects = new HashMapDecorator<>();
-        trace = env.transactionTimeout() > 0 ? new Throwable() : null;
+        trace = env.transactionTimeout() > 0 || env.getEnvironmentConfig().getProfilerEnabled() ? new StackTrace() : null;
         created = System.currentTimeMillis();
         started = created;
         traceFinish = null;
@@ -108,12 +111,16 @@ public abstract class TransactionBase implements Transaction {
     @Override
     @Nullable
     public Object getUserObject(@NotNull final Object key) {
-        return userObjects.get(key);
+        synchronized (userObjects) {
+            return userObjects.get(key);
+        }
     }
 
     @Override
     public void setUserObject(@NotNull final Object key, @NotNull final Object value) {
-        userObjects.put(key, value);
+        synchronized (userObjects) {
+            userObjects.put(key, value);
+        }
     }
 
     @NotNull
@@ -132,7 +139,9 @@ public abstract class TransactionBase implements Transaction {
 
     public void checkIsFinished() {
         if (isFinished()) {
-            throw new TransactionFinishedException(traceFinish);
+            throw traceFinish == EMPTY_TRACE ?
+                new TransactionFinishedException() :
+                new TransactionFinishedException(traceFinish);
         }
     }
 
@@ -160,7 +169,7 @@ public abstract class TransactionBase implements Transaction {
     }
 
     @Nullable
-    Throwable getTrace() {
+    public StackTrace getTrace() {
         return trace;
     }
 
@@ -199,14 +208,6 @@ public abstract class TransactionBase implements Transaction {
         return getMetaTree().getAllStoreNames();
     }
 
-    int getAcquiredPermits() {
-        return acquiredPermits;
-    }
-
-    void setAcquiredPermits(final int acquiredPermits) {
-        this.acquiredPermits = acquiredPermits;
-    }
-
     @Nullable
     abstract Runnable getBeginHook();
 
@@ -220,10 +221,16 @@ public abstract class TransactionBase implements Transaction {
         this.isExclusive = isExclusive;
     }
 
-    protected void setIsFinished() {
+    protected boolean setIsFinished() {
         if (traceFinish == null) {
-            traceFinish = new Throwable();
+            clearImmutableTrees();
+            synchronized (userObjects) {
+                userObjects.clear();
+            }
+            traceFinish = env.getEnvironmentConfig().isEnvTxnTraceFinish() ? new StackTrace() : EMPTY_TRACE;
+            return true;
         }
+        return false;
     }
 
     protected Runnable getWrappedBeginHook(@Nullable final Runnable beginHook) {
@@ -234,7 +241,6 @@ public abstract class TransactionBase implements Transaction {
             if (beginHook != null) {
                 beginHook.run();
             }
-
         };
     }
 }

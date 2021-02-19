@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ class MultiThreadDelegatingJobProcessorTest : JobProcessorTest() {
     override fun createProcessor(): JobProcessor = object : MultiThreadDelegatingJobProcessor("qwa-qwa${Any().hashCode()}", 1, 5000L) {}
 
     @Test
-    @TestFor(issues = ["XD-779"])
+    @TestFor(issue = "XD-779")
     fun testTimeout() {
         val processor = processor as MultiThreadDelegatingJobProcessor
         SleepJob(processor, 10000L)

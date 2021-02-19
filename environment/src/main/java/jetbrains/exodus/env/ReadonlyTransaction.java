@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,15 @@ package jetbrains.exodus.env;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static jetbrains.exodus.env.EnvironmentStatistics.Type.READONLY_TRANSACTIONS;
-
 public class ReadonlyTransaction extends TransactionBase {
 
     @Nullable
     private final Runnable beginHook;
 
-    public ReadonlyTransaction(@NotNull final EnvironmentImpl env, final  boolean exclusive, @Nullable final Runnable beginHook) {
+    public ReadonlyTransaction(@NotNull final EnvironmentImpl env, final boolean exclusive, @Nullable final Runnable beginHook) {
         super(env, exclusive);
         this.beginHook = getWrappedBeginHook(beginHook);
-        env.holdNewestSnapshotBy(this);
-        env.getStatistics().getStatisticsItem(READONLY_TRANSACTIONS).incTotal();
+        env.holdNewestSnapshotBy(this, false);
     }
 
     /**
@@ -40,9 +37,20 @@ public class ReadonlyTransaction extends TransactionBase {
         beginHook = null;
         setMetaTree(origin.getMetaTree());
         final EnvironmentImpl env = getEnvironment();
-        env.acquireTransaction(this);
         env.registerTransaction(this);
-        env.getStatistics().getStatisticsItem(READONLY_TRANSACTIONS).incTotal();
+    }
+
+    /**
+     * Constructor for creating new read-only transaction for specified high address.
+     * It's actually a snapshot transaction viewing database snapshot with that right bound of the log.
+     */
+    ReadonlyTransaction(@NotNull final EnvironmentImpl env, final long highAddress) {
+        super(env, false);
+        beginHook = () -> {
+            setMetaTree(MetaTreeImpl.create(env, highAddress));
+            env.registerTransaction(this);
+        };
+        env.holdNewestSnapshotBy(this, false);
     }
 
     @Override

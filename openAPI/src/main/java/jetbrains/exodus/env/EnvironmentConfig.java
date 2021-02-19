@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import jetbrains.exodus.entitystore.MetaServer;
 import jetbrains.exodus.io.DataReader;
 import jetbrains.exodus.io.DataReaderWriterProvider;
 import jetbrains.exodus.io.DataWriter;
+import jetbrains.exodus.io.StorageTypeNotAllowedException;
 import jetbrains.exodus.system.JVMConstants;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -131,6 +132,14 @@ public class EnvironmentConfig extends AbstractConfig {
      * @see StreamCipherProvider
      */
     public static final String CIPHER_BASIC_IV = "exodus.cipherBasicIV";
+
+    /**
+     * If is set to {@code true} database profiler is enabled. By default, it is disabled.
+     * <p>Mutable at runtime: no
+     *
+     * @since 1.4.0
+     */
+    public static final String PROFILER_ENABLED = "exodus.profiler.enabled";
 
     /**
      * If is set to {@code true} forces file system's fsync call after each committed or flushed transaction. By default,
@@ -276,6 +285,39 @@ public class EnvironmentConfig extends AbstractConfig {
     public static final String LOG_FULL_FILE_READ_ONLY = "exodus.log.fullFileReadonly";
 
     /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a removable storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @since 1.4.0
+     */
+    public static final String LOG_ALLOW_REMOVABLE = "exodus.log.allowRemovable";
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a remote storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @since 1.4.0
+     */
+    public static final String LOG_ALLOW_REMOTE = "exodus.log.allowRemote";
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on RAM-disk. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @since 1.4.0
+     */
+    public static final String LOG_ALLOW_RAM_DISK = "exodus.log.allowRamDisk";
+
+    /**
      * Defines fully-qualified name of the {@linkplain DataReaderWriterProvider} service provider interface implementation which
      * will be used to create {@linkplain DataReader} and {@linkplain DataWriter} instances. This setting can be used
      * to customize storageL define in-memory one, in-cloud, etc.
@@ -383,12 +425,22 @@ public class EnvironmentConfig extends AbstractConfig {
     public static final String ENV_TXN_SINGLE_THREAD_WRITES = "exodus.env.txn.singleThreadWrites";
 
     /**
+     * If is set to {@code true} then each transaction, read/write or read-only, saves stack trace
+     * when it is finished (aborted or committed). The stack trace is then reported with
+     * {@code TransactionFinishedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: yes
+     *
+     * @see Transaction
+     * @since 1.4.0
+     */
+    public static final String ENV_TXN_TRACE_FINISH = "exodus.env.txn.traceFinish";
+
+    /**
      * Defines the number of {@linkplain Transaction transactions} that can be started in parallel. By default it is
      * unlimited.
      * <p>Mutable at runtime: no
      *
      * @see Transaction
-     * @see #ENV_MAX_PARALLEL_READONLY_TXNS
      */
     public static final String ENV_MAX_PARALLEL_TXNS = "exodus.env.maxParallelTxns";
 
@@ -397,10 +449,13 @@ public class EnvironmentConfig extends AbstractConfig {
      * default it is unlimited.
      * <p>Mutable at runtime: no
      *
+     * As of 1.4.0, is deprecated.
+     *
      * @see Transaction
      * @see Transaction#isReadonly()
      * @see #ENV_MAX_PARALLEL_TXNS
      */
+    @Deprecated
     public static final String ENV_MAX_PARALLEL_READONLY_TXNS = "exodus.env.maxParallelReadonlyTxns";
 
     /**
@@ -647,65 +702,69 @@ public class EnvironmentConfig extends AbstractConfig {
     public EnvironmentConfig(@NotNull final ConfigurationStrategy strategy) {
         //noinspection unchecked
         super(new Pair[]{
-                new Pair(MEMORY_USAGE_PERCENTAGE, 50),
-                new Pair(CIPHER_ID, null),
-                new Pair(CIPHER_KEY, null),
-                new Pair(CIPHER_BASIC_IV, 0L),
-                new Pair(LOG_DURABLE_WRITE, false),
-                new Pair(LOG_FILE_SIZE, 8192L),
-                new Pair(LOG_LOCK_TIMEOUT, 0L),
-                new Pair(LOG_LOCK_ID, null),
-                new Pair(LOG_CACHE_PAGE_SIZE, 64 * 1024),
-                new Pair(LOG_CACHE_OPEN_FILES, 500),
-                new Pair(LOG_CACHE_USE_NIO, false),
-                new Pair(LOG_CACHE_FREE_PHYSICAL_MEMORY_THRESHOLD, 1_000_000_000L), // ~1GB
-                new Pair(LOG_CACHE_SHARED, true),
-                new Pair(LOG_CACHE_NON_BLOCKING, true),
-                new Pair(LOG_CACHE_GENERATION_COUNT, 2),
-                new Pair(LOG_CACHE_USE_SOFT_REFERENCES, false),
-                new Pair(LOG_CACHE_READ_AHEAD_MULTIPLE, 1),
-                new Pair(LOG_CLEAN_DIRECTORY_EXPECTED, false),
-                new Pair(LOG_CLEAR_INVALID, false),
-                new Pair(LOG_SYNC_PERIOD, 10000L),
-                new Pair(LOG_FULL_FILE_READ_ONLY, true),
-                new Pair(LOG_DATA_READER_WRITER_PROVIDER, DataReaderWriterProvider.DEFAULT_READER_WRITER_PROVIDER),
-                new Pair(ENV_IS_READONLY, false),
-                new Pair(ENV_FAIL_FAST_IN_READONLY, true),
-                new Pair(ENV_READONLY_EMPTY_STORES, false),
-                new Pair(ENV_STOREGET_CACHE_SIZE, 0),
-                new Pair(ENV_STOREGET_CACHE_MIN_TREE_SIZE, 200),
-                new Pair(ENV_STOREGET_CACHE_MAX_VALUE_SIZE, 200),
-                new Pair(ENV_CLOSE_FORCEDLY, false),
-                new Pair(ENV_TXN_REPLAY_TIMEOUT, 2000L),
-                new Pair(ENV_TXN_REPLAY_MAX_COUNT, 2),
-                new Pair(ENV_TXN_DOWNGRADE_AFTER_FLUSH, true),
-                new Pair(ENV_TXN_SINGLE_THREAD_WRITES, false),
-                new Pair(ENV_MAX_PARALLEL_TXNS, Integer.MAX_VALUE),
-                new Pair(ENV_MAX_PARALLEL_READONLY_TXNS, Integer.MAX_VALUE),
-                new Pair(ENV_MONITOR_TXNS_TIMEOUT, 0),
-                new Pair(ENV_MONITOR_TXNS_EXPIRATION_TIMEOUT, (int) TimeUnit.HOURS.toMillis(8)),
-                new Pair(ENV_MONITOR_TXNS_CHECK_FREQ, 60000),
-                new Pair(ENV_GATHER_STATISTICS, true),
-                new Pair(ENV_COMPACT_ON_OPEN, false),
-                new Pair(TREE_MAX_PAGE_SIZE, 128),
-                new Pair(TREE_DUP_MAX_PAGE_SIZE, 8),
-                new Pair(GC_ENABLED, true),
-                new Pair(GC_START_IN, 10000),
-                new Pair(GC_MIN_UTILIZATION, 50),
-                new Pair(GC_RENAME_FILES, false),
-                new Pair(GC_MIN_FILE_AGE, 2),
-                new Pair(GC_FILES_INTERVAL, 3),
-                new Pair(GC_RUN_PERIOD, 5000),
-                new Pair(GC_UTILIZATION_FROM_SCRATCH, false),
-                new Pair(GC_UTILIZATION_FROM_FILE, ""),
-                new Pair(GC_FILES_DELETION_DELAY, 5000),
-                new Pair(GC_RUN_EVERY, 0),
-                new Pair(GC_USE_EXCLUSIVE_TRANSACTION, true),
-                new Pair(GC_TRANSACTION_ACQUIRE_TIMEOUT, 1000),
-                new Pair(GC_TRANSACTION_TIMEOUT, 500),
-                new Pair(MANAGEMENT_ENABLED, !JVMConstants.INSTANCE.getIS_ANDROID()),
-                new Pair(MANAGEMENT_OPERATIONS_RESTRICTED, true),
-                new Pair(META_SERVER, null)
+            new Pair(MEMORY_USAGE_PERCENTAGE, 50),
+            new Pair(CIPHER_ID, null),
+            new Pair(CIPHER_KEY, null),
+            new Pair(CIPHER_BASIC_IV, 0L),
+            new Pair(PROFILER_ENABLED, false),
+            new Pair(LOG_DURABLE_WRITE, false),
+            new Pair(LOG_FILE_SIZE, 8192L),
+            new Pair(LOG_LOCK_TIMEOUT, 0L),
+            new Pair(LOG_LOCK_ID, null),
+            new Pair(LOG_CACHE_PAGE_SIZE, 64 * 1024),
+            new Pair(LOG_CACHE_OPEN_FILES, 500),
+            new Pair(LOG_CACHE_USE_NIO, false),
+            new Pair(LOG_CACHE_FREE_PHYSICAL_MEMORY_THRESHOLD, 1_000_000_000L), // ~1GB
+            new Pair(LOG_CACHE_SHARED, true),
+            new Pair(LOG_CACHE_NON_BLOCKING, true),
+            new Pair(LOG_CACHE_GENERATION_COUNT, 2),
+            new Pair(LOG_CACHE_USE_SOFT_REFERENCES, false),
+            new Pair(LOG_CACHE_READ_AHEAD_MULTIPLE, 1),
+            new Pair(LOG_CLEAN_DIRECTORY_EXPECTED, false),
+            new Pair(LOG_CLEAR_INVALID, false),
+            new Pair(LOG_SYNC_PERIOD, 10000L),
+            new Pair(LOG_FULL_FILE_READ_ONLY, true),
+            new Pair(LOG_ALLOW_REMOVABLE, false),
+            new Pair(LOG_ALLOW_REMOTE, false),
+            new Pair(LOG_ALLOW_RAM_DISK, false),
+            new Pair(LOG_DATA_READER_WRITER_PROVIDER, DataReaderWriterProvider.DEFAULT_READER_WRITER_PROVIDER),
+            new Pair(ENV_IS_READONLY, false),
+            new Pair(ENV_FAIL_FAST_IN_READONLY, true),
+            new Pair(ENV_READONLY_EMPTY_STORES, false),
+            new Pair(ENV_STOREGET_CACHE_SIZE, 0),
+            new Pair(ENV_STOREGET_CACHE_MIN_TREE_SIZE, 200),
+            new Pair(ENV_STOREGET_CACHE_MAX_VALUE_SIZE, 200),
+            new Pair(ENV_CLOSE_FORCEDLY, false),
+            new Pair(ENV_TXN_REPLAY_TIMEOUT, 2000L),
+            new Pair(ENV_TXN_REPLAY_MAX_COUNT, 2),
+            new Pair(ENV_TXN_DOWNGRADE_AFTER_FLUSH, true),
+            new Pair(ENV_TXN_SINGLE_THREAD_WRITES, false),
+            new Pair(ENV_TXN_TRACE_FINISH, false),
+            new Pair(ENV_MAX_PARALLEL_TXNS, Integer.MAX_VALUE),
+            new Pair(ENV_MONITOR_TXNS_TIMEOUT, 0),
+            new Pair(ENV_MONITOR_TXNS_EXPIRATION_TIMEOUT, (int) TimeUnit.HOURS.toMillis(8)),
+            new Pair(ENV_MONITOR_TXNS_CHECK_FREQ, 60000),
+            new Pair(ENV_GATHER_STATISTICS, true),
+            new Pair(ENV_COMPACT_ON_OPEN, false),
+            new Pair(TREE_MAX_PAGE_SIZE, 128),
+            new Pair(TREE_DUP_MAX_PAGE_SIZE, 8),
+            new Pair(GC_ENABLED, true),
+            new Pair(GC_START_IN, 10000),
+            new Pair(GC_MIN_UTILIZATION, 50),
+            new Pair(GC_RENAME_FILES, false),
+            new Pair(GC_MIN_FILE_AGE, 2),
+            new Pair(GC_FILES_INTERVAL, 3),
+            new Pair(GC_RUN_PERIOD, 5000),
+            new Pair(GC_UTILIZATION_FROM_SCRATCH, false),
+            new Pair(GC_UTILIZATION_FROM_FILE, ""),
+            new Pair(GC_FILES_DELETION_DELAY, 5000),
+            new Pair(GC_RUN_EVERY, 0),
+            new Pair(GC_USE_EXCLUSIVE_TRANSACTION, true),
+            new Pair(GC_TRANSACTION_ACQUIRE_TIMEOUT, 1000),
+            new Pair(GC_TRANSACTION_TIMEOUT, 500),
+            new Pair(MANAGEMENT_ENABLED, !JVMConstants.getIS_ANDROID()),
+            new Pair(MANAGEMENT_OPERATIONS_RESTRICTED, true),
+            new Pair(META_SERVER, null)
         }, strategy);
     }
 
@@ -898,6 +957,29 @@ public class EnvironmentConfig extends AbstractConfig {
      */
     public EnvironmentConfig setCipherBasicIV(final long basicIV) {
         return setSetting(CIPHER_BASIC_IV, basicIV);
+    }
+
+    /**
+     * If is set to {@code true} database profiler is enabled. By default, it is disabled.
+     * <p>Mutable at runtime: no
+     *
+     * @return {@code true} if database profiler is enabled.
+     * @since 1.4.0
+     */
+    public boolean getProfilerEnabled() {
+        return (Boolean) getSetting(PROFILER_ENABLED);
+    }
+
+    /**
+     * Set {@code true} to enable database profiler. By default, it is disabled.
+     * <p>Mutable at runtime: no
+     *
+     * @param enabled {@code true} to enable database profiler.
+     * @return this {@code EnvironmentConfig} instance
+     * @since 1.4.0
+     */
+    public EnvironmentConfig setProfilerEnabled(final boolean enabled) {
+        return setSetting(PROFILER_ENABLED, enabled);
     }
 
     /**
@@ -1332,6 +1414,93 @@ public class EnvironmentConfig extends AbstractConfig {
     }
 
     /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a removable storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @return {@code true} if the database can be opened on a removable storage
+     * @since 1.4.0
+     */
+    public boolean isLogAllowRemovable() {
+        return (Boolean) getSetting(LOG_ALLOW_REMOVABLE);
+    }
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a removable storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @param allow {@code true} to allow using database located on removable storage
+     * @return this {@code EnvironmentConfig} instance
+     * @since 1.4.0
+     */
+    public EnvironmentConfig setLogAllowRemovable(final boolean allow) {
+        return setSetting(LOG_ALLOW_REMOVABLE, allow);
+    }
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a remote storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @return {@code true} if the database can be opened on a remote storage
+     * @since 1.4.0
+     */
+    public boolean isLogAllowRemote() {
+        return (Boolean) getSetting(LOG_ALLOW_REMOTE);
+    }
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on a remote storage. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @param allow {@code true} to allow using database located on remote storage
+     * @return this {@code EnvironmentConfig} instance
+     * @since 1.4.0
+     */
+    public EnvironmentConfig setLogAllowRemote(final boolean allow) {
+        return setSetting(LOG_ALLOW_REMOTE, allow);
+    }
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on RAM-disk. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @return {@code true} if the database can be opened on RAM-disk
+     * @since 1.4.0
+     */
+    public boolean isLogAllowRamDisk() {
+        return (Boolean) getSetting(LOG_ALLOW_RAM_DISK);
+    }
+
+    /**
+     * For {@linkplain DataReaderWriterProvider#DEFAULT_READER_WRITER_PROVIDER} used as {@linkplain
+     * DataReaderWriterProvider} service provider interface implementation, if is set to {@code true}
+     * then the database can be opened on RAM-disk. Attempt to open database on a storage of not allowed
+     * type results in {@linkplain StorageTypeNotAllowedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: no
+     *
+     * @param allow {@code true} to allow using database located on RAM-disk
+     * @return this {@code EnvironmentConfig} instance
+     * @since 1.4.0
+     */
+    public EnvironmentConfig setLogAllowRamDisk(final boolean allow) {
+        return setSetting(LOG_ALLOW_RAM_DISK, allow);
+    }
+
+    /**
      * Returns fully-qualified name of the {@linkplain DataReaderWriterProvider} service provide interface implementation which
      * will be used to create {@linkplain DataReader} and {@linkplain DataWriter} instances. This setting can be used
      * to customize storage: define in-memory one, in-cloud, etc.
@@ -1628,6 +1797,35 @@ public class EnvironmentConfig extends AbstractConfig {
     }
 
     /**
+     * If is set to {@code true} then each transaction, read/write or read-only, saves stack trace
+     * when it is finished (aborted or committed). The stack trace is then reported with
+     * {@code TransactionFinishedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: yes
+     *
+     * @return {@code true} if each transaction saves stack trace when it is finished
+     * @see Transaction
+     * @since 1.4.0
+     */
+    public boolean isEnvTxnTraceFinish() {
+        return (Boolean) getSetting(ENV_TXN_TRACE_FINISH);
+    }
+
+    /**
+     * If is set to {@code true} then each transaction, read/write or read-only, saves stack trace
+     * when it is finished (aborted or committed). The stack trace is then reported with
+     * {@code TransactionFinishedException}. Default value is {@code false}.
+     * <p>Mutable at runtime: yes
+     *
+     * @param traceFinish {@code true} if each transaction should save stack trace when it is finished
+     * @return this {@code EnvironmentConfig} instance
+     * @see Transaction
+     * @since 1.4.0
+     */
+    public EnvironmentConfig setEnvTxnTraceFinish(final boolean traceFinish) {
+        return setSetting(ENV_TXN_TRACE_FINISH, traceFinish);
+    }
+
+    /**
      * Returns the number of {@linkplain Transaction transactions} that can be started in parallel. By default it is
      * unlimited.
      * <p>Mutable at runtime: no
@@ -1655,10 +1853,13 @@ public class EnvironmentConfig extends AbstractConfig {
      * default it is unlimited.
      * <p>Mutable at runtime: no
      *
+     * As of 1.4.0, is deprecated.
+     *
      * @return number of read-only {@linkplain Transaction transactions} that can be started in parallel
      */
+    @Deprecated
     public int getEnvMaxParallelReadonlyTxns() {
-        return (Integer) getSetting(ENV_MAX_PARALLEL_READONLY_TXNS);
+        return Integer.MAX_VALUE;
     }
 
     /**
@@ -1666,11 +1867,13 @@ public class EnvironmentConfig extends AbstractConfig {
      * default it is unlimited.
      * <p>Mutable at runtime: no
      *
+     * As of 1.4.0, is deprecated.
+     *
      * @param maxParallelReadonlyTxns number of read-only {@linkplain Transaction transactions} that can be started in parallel
      * @return this {@code EnvironmentConfig} instance
      */
     public EnvironmentConfig setEnvMaxParallelReadonlyTxns(final int maxParallelReadonlyTxns) {
-        return setSetting(ENV_MAX_PARALLEL_TXNS, maxParallelReadonlyTxns);
+        return this;
     }
 
     /**
@@ -2340,7 +2543,7 @@ public class EnvironmentConfig extends AbstractConfig {
      * @return this {@code EnvironmentConfig} instance
      */
     public EnvironmentConfig setManagementEnabled(final boolean managementEnabled) {
-        return setSetting(MANAGEMENT_ENABLED, managementEnabled && !JVMConstants.INSTANCE.getIS_ANDROID());
+        return setSetting(MANAGEMENT_ENABLED, managementEnabled && !JVMConstants.getIS_ANDROID());
     }
 
     /**

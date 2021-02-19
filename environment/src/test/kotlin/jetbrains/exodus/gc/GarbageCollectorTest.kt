@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -300,7 +300,7 @@ open class GarbageCollectorTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-780"])
+    @TestFor(issue = "XD-780")
     fun `stackoverflow-com-questions-56662998`() {
         env.environmentConfig.run {
             gcStartIn = 0
@@ -327,7 +327,7 @@ open class GarbageCollectorTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-780"])
+    @TestFor(issue = "XD-780")
     fun `stackoverflow-com-questions-56662998+`() {
         env.environmentConfig.run {
             gcStartIn = 0

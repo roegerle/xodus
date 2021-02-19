@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package jetbrains.exodus.env
 
 import jetbrains.exodus.ExodusException
 import jetbrains.exodus.crypto.newCipherProvider
+import jetbrains.exodus.io.DataReaderWriterProvider
 import jetbrains.exodus.io.FileDataWriter
 import jetbrains.exodus.io.SharedOpenFilesCache
 import jetbrains.exodus.log.Log
@@ -51,6 +52,9 @@ object Environments {
     fun newInstance(config: LogConfig, ec: EnvironmentConfig): Environment = prepare { EnvironmentImpl(newLogInstance(config, ec), ec) }
 
     @JvmStatic
+    fun <T : EnvironmentImpl> newInstance(envCreator: () -> T): T = prepare(envCreator)
+
+    @JvmStatic
     fun newContextualInstance(dir: String, subDir: String, ec: EnvironmentConfig): ContextualEnvironment =
             prepare { ContextualEnvironmentImpl(newLogInstance(File(dir, subDir), ec), ec) }
 
@@ -82,9 +86,11 @@ object Environments {
                 memoryUsagePercentage = ec.memoryUsagePercentage
             }
             setReaderWriterProvider(ec.logDataReaderWriterProvider)
-            if (config.readerWriterProvider?.isReadonly == true) {
+            if (isReadonlyReaderWriterProvider) {
                 ec.envIsReadonly = true
-                config.isLockIgnored = true
+                ec.envFailFastInReadonly = true
+                ec.isGcEnabled = false
+                isLockIgnored = true
             }
             fileSize = ec.logFileSize
             lockTimeout = ec.logLockTimeout
@@ -111,7 +117,8 @@ object Environments {
     private fun <T : EnvironmentImpl> prepare(envCreator: () -> T): T {
         var env = envCreator()
         val ec = env.environmentConfig
-        if (ec.envCompactOnOpen && env.log.numberOfFiles > 1) {
+        if (ec.logDataReaderWriterProvider == DataReaderWriterProvider.DEFAULT_READER_WRITER_PROVIDER &&
+                ec.envCompactOnOpen && env.log.numberOfFiles > 1) {
             val location = env.location
             File(location, "compactTemp${System.currentTimeMillis()}").let { tempDir ->
                 if (!tempDir.mkdir()) {
@@ -131,13 +138,13 @@ object Environments {
                 files.forEach { fileAddress ->
                     val file = File(location, LogUtil.getLogFilename(fileAddress))
                     if (!FileDataWriter.renameFile(file)) {
-                        EnvironmentImpl.loggerError("Failed to reanme file: $file")
+                        EnvironmentImpl.loggerError("Failed to rename file: $file")
                         return@let
                     }
                 }
                 LogUtil.listFiles(tempDir).forEach { file ->
                     if (!file.renameTo(File(location, file.name))) {
-                        throw ExodusException("Failed to reanme file: $file")
+                        throw ExodusException("Failed to rename file: $file")
                     }
                 }
                 env = envCreator()

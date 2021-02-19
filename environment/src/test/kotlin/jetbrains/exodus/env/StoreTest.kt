@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,10 @@ import jetbrains.exodus.core.execution.JobProcessorExceptionHandler
 import jetbrains.exodus.core.execution.MultiThreadDelegatingJobProcessor
 import org.junit.Assert.*
 import org.junit.Test
-import sun.nio.cs.US_ASCII
 import java.io.File
 import java.io.FileOutputStream
 import java.io.UnsupportedEncodingException
+import java.nio.charset.Charset
 import java.security.SecureRandom
 import java.util.*
 import kotlin.math.abs
@@ -120,7 +120,7 @@ class StoreTest : EnvironmentTestsBase() {
         assertNotNullStringValues(store, "value", "value2")
     }
 
-    @TestFor(issues = ["XD-705"])
+    @TestFor(issue = "XD-705")
     @Test
     fun testCloseCursorTwice() {
         val store = openStoreAutoCommit("store", StoreConfig.WITH_DUPLICATES)
@@ -189,7 +189,7 @@ class StoreTest : EnvironmentTestsBase() {
     fun testFileByteIterable() {
         val content = "quod non habet principium, non habet finem"
         val file = File.createTempFile("FileByteIterable", null, TestUtil.createTempDir())
-        FileOutputStream(file).use { output -> output.write(content.toByteArray(US_ASCII())) }
+        FileOutputStream(file).use { output -> output.write(content.toByteArray(Charset.defaultCharset())) }
         val store = env.computeInTransaction { txn -> env.openStore("Store", StoreConfig.WITHOUT_DUPLICATES, txn) }
         val fbi = FileByteIterable(file)
         env.executeInTransaction { txn -> store.put(txn, StringBinding.stringToEntry("winged"), fbi) }
@@ -198,7 +198,7 @@ class StoreTest : EnvironmentTestsBase() {
                 val value = store.get(txn, StringBinding.stringToEntry("winged"))
                         ?: throw ExodusException("value is null")
                 try {
-                    return@TransactionalComputable String(value.bytesUnsafe, 0, value.length, US_ASCII())
+                    return@TransactionalComputable String(value.bytesUnsafe, 0, value.length, Charset.defaultCharset())
                 } catch (e: UnsupportedEncodingException) {
                     return@TransactionalComputable null
                 }
@@ -219,7 +219,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-601"])
+    @TestFor(issue = "XD-601")
     fun testXD_601() {
         val store = env.computeInTransaction { txn -> env.openStore("Messages", StoreConfig.WITHOUT_DUPLICATES, txn, true) }
                 ?: throw ExodusException("store is null")
@@ -234,7 +234,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-608"])
+    @TestFor(issue = "XD-608")
     fun testXD_608_by_Thorsten_Schemm() {
         env.environmentConfig.isGcEnabled = false
         val store = env.computeInTransaction { txn -> env.openStore("Whatever", StoreConfig.WITHOUT_DUPLICATES_WITH_PREFIXING, txn, true) }
@@ -249,7 +249,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-608"])
+    @TestFor(issue = "XD-608")
     fun testXD_608_Mutable() {
         env.environmentConfig.isGcEnabled = false
         val store = env.computeInTransaction { txn -> env.openStore("Whatever", StoreConfig.WITHOUT_DUPLICATES_WITH_PREFIXING, txn, true) }
@@ -291,7 +291,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-614"])
+    @TestFor(issue = "XD-614")
     fun testXD_614_by_Thorsten_Schemm() {
         env.environmentConfig.isGcEnabled = false
         val store = env.computeInTransaction { txn -> env.openStore("Whatever", StoreConfig.WITHOUT_DUPLICATES_WITH_PREFIXING, txn, true) }
@@ -318,7 +318,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-614"])
+    @TestFor(issue = "XD-614")
     fun testXD_614_next_prev() {
         env.environmentConfig.isGcEnabled = false
         val store = env.computeInTransaction { txn -> env.openStore("Whatever", StoreConfig.WITHOUT_DUPLICATES_WITH_PREFIXING, txn, true) }
@@ -344,7 +344,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-601"])
+    @TestFor(issue = "XD-601")
     fun testXD_601_by_Thorsten_Schemm() {
         env.environmentConfig.isGcEnabled = false
         assertTrue(HashSet(listOf(*XD_601_KEYS)).size == XD_601_KEYS.size)
@@ -368,7 +368,7 @@ class StoreTest : EnvironmentTestsBase() {
     }
 
     @Test
-    @TestFor(issues = ["XD-774"])
+    @TestFor(issue = "XD-774")
     fun `remove and open store in single txn (by Martin Hausler)`() {
         val store = openStoreAutoCommit("store", StoreConfig.WITHOUT_DUPLICATES)
         env.executeInTransaction { txn ->

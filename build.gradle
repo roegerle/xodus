@@ -1,8 +1,8 @@
 buildscript {
-    ext.kotlinVersion = '1.3.72'
+    ext.kotlinVersion = '1.4.20'
     ext.kotlinLangVersion = '1.3'
     ext.kotlinCoroutinesVersion = '1.3.7'
-    ext.dokkaVersion = '0.10.0'
+    ext.dokkaVersion = '1.4.20'
     ext.kotlinLoggingVersion = '1.7.9'
     ext.annotationsVersion = '19.0.0'
     ext.licensePluginVersion = '0.15.0'
@@ -34,6 +34,11 @@ static def shouldDeploy(project) {
     return project.version.length() > 0 && !(project.name in ['benchmarks', 'samples'])
 }
 
+static def shouldApplyDokka(project) {
+    return project.version.length() > 0 && !(project.name in ['benchmarks', 'samples', 'query'])
+}
+
+
 wrapper {
     gradleVersion = '6.5'
 }
@@ -51,6 +56,7 @@ nexusStaging {
 allprojects {
     repositories {
         maven { url "https://cache-redirector.jetbrains.com/repo1.maven.org/maven2" }
+        maven { url "https://cache-redirector.jetbrains.com/jcenter" }
         maven { url 'https://dl.bintray.com/kotlin/dokka' }
     }
 }
@@ -92,7 +98,7 @@ subprojects {
     // tests for most of sub-projects run with database encryption turned on
     if (!(project.name in ['benchmarks', 'compress', 'crypto', 'openAPI', 'samples', 'utils'])) {
         test {
-            systemProperty 'exodus.cipherId', 'jetbrains.exodus.crypto.streamciphers.ChaChaStreamCipherProvider'
+            systemProperty 'exodus.cipherId', 'jetbrains.exodus.crypto.streamciphers.JBChaChaStreamCipherProvider'
             systemProperty 'exodus.cipherKey', '000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f'
             systemProperty 'exodus.cipherBasicIV', '314159262718281828'
             // uncomment the following line to run tests in-memory
@@ -164,15 +170,13 @@ subprojects {
             apiVersion = "$kotlinLangVersion"
         }
     }
-    if (project.name != "benchmarks") {
-        dokka {
-            configuration {
-                reportUndocumented = false
+    if (shouldApplyDokka(project)) {
+        dokkaJavadoc {
+            dokkaSourceSets {
+                configureEach {
+                    reportUndocumented.set(false)
+                }
             }
-        }
-        task dokkaJavadoc(type: org.jetbrains.dokka.gradle.DokkaTask) {
-            outputFormat = 'javadoc'
-            outputDirectory = "$buildDir/javadoc"
         }
         javadocJar {
             dependsOn dokkaJavadoc

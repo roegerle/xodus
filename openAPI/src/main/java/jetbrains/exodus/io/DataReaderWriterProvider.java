@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,9 +44,20 @@ import java.util.ServiceLoader;
 public abstract class DataReaderWriterProvider {
 
     /**
-     * Fully-qualified name of default {@code }DataReaderWriteProvider}.
+     * Fully-qualified name of default {@code DataReaderWriteProvider}.
      */
     public static final String DEFAULT_READER_WRITER_PROVIDER = "jetbrains.exodus.io.FileDataReaderWriterProvider";
+
+    /**
+     * Fully-qualified name of read-only watching {@code DataReaderWriteProvider}.
+     */
+    public static final String WATCHING_READER_WRITER_PROVIDER = "jetbrains.exodus.io.WatchingFileDataReaderWriterProvider";
+
+    /**
+     * Fully-qualified name of in-memory {@code DataReaderWriteProvider}.
+     */
+    public static final String IN_MEMORY_READER_WRITER_PROVIDER = "jetbrains.exodus.io.MemoryDataReaderWriterProvider";
+
 
     /**
      * Creates pair of new instances of {@linkplain DataReader} and {@linkplain DataWriter} by specified location.

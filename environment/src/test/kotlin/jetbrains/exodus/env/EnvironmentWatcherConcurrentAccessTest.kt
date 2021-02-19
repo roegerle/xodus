@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 package jetbrains.exodus.env
 
 import jetbrains.exodus.InvalidSettingException
+import jetbrains.exodus.io.DataReaderWriterProvider
 import org.junit.Assert
 import org.junit.Test
 
@@ -28,7 +29,7 @@ class EnvironmentWatcherConcurrentAccessTest : EnvironmentConcurrentAccessTest()
             logFileSize = fileSize
             logCachePageSize = cachePageSize
             isLogCacheShared = false
-            logDataReaderWriterProvider = "jetbrains.exodus.io.WatchingFileDataReaderWriterProvider"
+            logDataReaderWriterProvider = DataReaderWriterProvider.WATCHING_READER_WRITER_PROVIDER
         }
     }
 

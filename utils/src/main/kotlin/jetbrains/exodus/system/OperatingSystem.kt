@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ object OperatingSystem {
     private var cachedPhysicalMemorySize = WeakReference<Long>(null)
     private var cachedSystemCpuLoad = WeakReference<Double>(null)
 
+    @JvmStatic
     fun getFreePhysicalMemorySize(): Long {
         var result = cachedPhysicalMemorySize.get()
         if (result == null) {

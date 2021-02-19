@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import jetbrains.exodus.ExodusException;
 import jetbrains.exodus.core.dataStructures.Pair;
 import jetbrains.exodus.entitystore.replication.PersistentEntityStoreReplicator;
 import jetbrains.exodus.env.Environment;
+import jetbrains.exodus.system.JVMConstants;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.SoftReference;
@@ -131,7 +132,7 @@ public class PersistentEntityStoreConfig extends AbstractConfig {
 
     /**
      * Defines the maximum size in bytes of a blob string that can be cached in blob strings cache.
-     * Default value is {@code 1000000}.
+     * Default value is {@code 100000}.
      * <p>Mutable at runtime: yes
      *
      * @since 1.0.5
@@ -341,7 +342,7 @@ public class PersistentEntityStoreConfig extends AbstractConfig {
             new Pair(REFACTORING_DELETE_REDUNDANT_BLOBS, false),
             new Pair(MAX_IN_PLACE_BLOB_SIZE, 10000),
             new Pair(BLOB_STRINGS_CACHE_SHARED, true),
-            new Pair(BLOB_STRINGS_CACHE_MAX_VALUE_SIZE, 1000000L),
+            new Pair(BLOB_STRINGS_CACHE_MAX_VALUE_SIZE, 100000L),
             new Pair(CACHING_DISABLED, false),
             new Pair(REORDERING_DISABLED, false),
             new Pair(EXPLAIN_ON, false),
@@ -364,7 +365,7 @@ public class PersistentEntityStoreConfig extends AbstractConfig {
             new Pair(TRANSACTION_LINKS_CACHE_SIZE, 1024),
             new Pair(TRANSACTION_BLOB_STRINGS_CACHE_SIZE, 256),
             new Pair(GATHER_STATISTICS, true),
-            new Pair(MANAGEMENT_ENABLED, true),
+            new Pair(MANAGEMENT_ENABLED, !JVMConstants.getIS_ANDROID()),
             new Pair(REPLICATOR, null)
         }, strategy);
     }
@@ -650,7 +651,7 @@ public class PersistentEntityStoreConfig extends AbstractConfig {
     }
 
     public PersistentEntityStoreConfig setManagementEnabled(final boolean managementEnabled) {
-        return setSetting(MANAGEMENT_ENABLED, managementEnabled);
+        return setSetting(MANAGEMENT_ENABLED, managementEnabled && !JVMConstants.getIS_ANDROID());
     }
 
     public PersistentEntityStoreConfig setStoreReplicator(final PersistentEntityStoreReplicator replicator) {

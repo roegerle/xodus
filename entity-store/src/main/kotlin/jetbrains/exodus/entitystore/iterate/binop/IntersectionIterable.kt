@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,11 @@ class IntersectionIterable @JvmOverloads constructor(txn: PersistentStoreTransac
             }
         } else {
             // both unsorted or order preservation needed
-            iterator = UnsortedIterator(this, txn, iterable1, iterable2)
+            // XD-821: EntityIdSetIterable cannot be passed as second parameter to ctor of UnsortedIterator
+            iterator = if (iterable2 is EntityIdSetIterable)
+                UnsortedIterator(this, txn, iterable2, iterable1)
+            else
+                UnsortedIterator(this, txn, iterable1, iterable2)
         }
         return EntityIteratorFixingDecorator(this, iterator)
     }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -278,6 +278,24 @@ public interface StoreTransaction {
                         @NotNull final String propertyName,
                         @NotNull final Comparable minValue,
                         @NotNull final Comparable maxValue);
+
+    /**
+     * Returns {@linkplain EntityIterable} with entities of specified type with specified property having a string value
+     * containing specified value as sub-string with respect to specified character case.
+     * specified range {@code [minValue, maxValue]}.
+     *
+     * @param entityType   entity type
+     * @param propertyName name of the property to search for
+     * @param value        sub-string that the property should contain
+     * @param ignoreCase   {@code true} to ignore character case when comparing strings
+     * @return {@linkplain EntityIterable} instance
+     * @see EntityIterable
+     */
+    @NotNull
+    EntityIterable findContaining(@NotNull final String entityType,
+                                  @NotNull final String propertyName,
+                                  @NotNull final String value,
+                                  final boolean ignoreCase);
 
     /**
      * Returns {@linkplain EntityIterable} with entities of specified type which have {@linkplain String} values of
@@ -571,14 +589,25 @@ public interface StoreTransaction {
     EntityId toEntityId(@NotNull final String representation);
 
     /**
-     * Returns existing or creates the new named {@linkplain Sequence}.
+     * Returns existing or creates new named zero-starting {@linkplain Sequence}.
      *
-     * @param sequenceName name of sequence, unique in the {@linkplain EntityStore}
-     * @return {@linkplain Sequence} instance having specified name
+     * @param sequenceName name of the sequence, unique in the {@linkplain EntityStore}
+     * @return {@linkplain Sequence} instance with specified name
      * @see Sequence
      */
     @NotNull
     Sequence getSequence(@NotNull final String sequenceName);
+
+    /**
+     * Returns existing or creates new named {@linkplain Sequence} starting with {@code initialValue}.
+     *
+     * @param sequenceName name of the sequence, unique in the {@linkplain EntityStore}
+     * @param initialValue initial value of the sequence
+     * @return {@linkplain Sequence} instance with specified name
+     * @see Sequence
+     */
+    @NotNull
+    Sequence getSequence(@NotNull final String sequenceName, final long initialValue);
 
     /**
      * Sets a query cancelling policy for the {@code StoreTransaction}.

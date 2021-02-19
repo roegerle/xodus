@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,8 +66,6 @@ internal class BackgroundCleaner(private val gc: GarbageCollector) {
 
     val isCurrentThread: Boolean get() = threadId == Thread.currentThread().id
 
-    val isActive: Boolean get() = processor.currentJob == backgroundCleaningJob
-
     fun finish() {
         (processor.currentJob as? GcJob)?.cancel()
         backgroundCleaningJob.cancel()
@@ -93,12 +91,14 @@ internal class BackgroundCleaner(private val gc: GarbageCollector) {
 
     fun queueCleaningJob() {
         if (gc.environment.environmentConfig.isGcEnabled) {
+            backgroundCleaningJob.renew(gc)
             processor.queue(backgroundCleaningJob)
         }
     }
 
     fun queueCleaningJobAt(millis: Long) {
         if (gc.environment.environmentConfig.isGcEnabled) {
+            backgroundCleaningJob.renew(gc)
             processor.queueAt(backgroundCleaningJob, millis)
         }
     }

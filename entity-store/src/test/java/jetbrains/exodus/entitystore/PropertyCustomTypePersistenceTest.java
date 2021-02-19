@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package jetbrains.exodus.entitystore;
 import jetbrains.exodus.TestFor;
 import jetbrains.exodus.bindings.BindingUtils;
 import jetbrains.exodus.bindings.ComparableBinding;
+import jetbrains.exodus.bindings.ComparableSet;
 import jetbrains.exodus.util.LightOutputStream;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,10 +28,10 @@ public class PropertyCustomTypePersistenceTest extends EntityStoreTestBase {
 
     @Override
     protected String[] casesThatDontNeedExplicitTxn() {
-        return new String[]{"testPersistentCustomPropertyType"};
+        return new String[]{"testPersistentCustomPropertyType", "testPersistentCustomPropertyTypeSet"};
     }
 
-    @TestFor(issues = "XD-555")
+    @TestFor(issue = "XD-555")
     public void testPersistentCustomPropertyType() throws Exception {
         PersistentEntityStoreImpl store = getEntityStore();
 
@@ -47,10 +48,32 @@ public class PropertyCustomTypePersistenceTest extends EntityStoreTestBase {
 
         registerDatatype(store);
 
-        store.executeInTransaction(txn -> {
+        store.executeInReadonlyTransaction(txn -> {
             final Entity entity = txn.getAll("Entity").getFirst();
             assertNotNull(entity);
             assertEquals(new MockData(42), entity.getProperty("property"));
+        });
+    }
+
+    @TestFor(issue = "XD-833")
+    public void testPersistentCustomPropertyTypeSet() throws Exception {
+        PersistentEntityStoreImpl store = getEntityStore();
+
+        registerDatatype(store);
+
+        store.executeInTransaction(txn -> {
+            Entity testEntity = txn.newEntity("Entity");
+            final ComparableSet<MockData> set = new ComparableSet<>();
+            set.addItem(new MockData(42));
+            testEntity.setProperty("properties", set);
+            txn.saveEntity(testEntity);
+        });
+        store.executeInReadonlyTransaction(txn -> {
+            final Entity entity = txn.getAll("Entity").getFirst();
+            assertNotNull(entity);
+            final Comparable set = entity.getProperty("properties");
+            assertTrue(set instanceof ComparableSet);
+            assertEquals(new MockData(42), ((ComparableSet) set).getMaximum());
         });
     }
 
@@ -58,7 +81,7 @@ public class PropertyCustomTypePersistenceTest extends EntityStoreTestBase {
         StoreTransaction txn = store.beginTransaction();
         store.registerCustomPropertyType(txn, MockData.class, new MockBinding());
         if (!txn.commit()) {
-            throw new IllegalStateException("Couldn't register ByteBufferWrapper property type.");
+            throw new IllegalStateException("Couldn't register MockData property type.");
         }
     }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -218,7 +218,7 @@ public class LogTests extends LogTestsBase {
     }
 
     @Test
-    @TestFor(issues = "XD-317")
+    @TestFor(issue = "XD-317")
     public void testSetHighAddress_XD_317() {
         getLog().beginWrite();
         getLog().write(DUMMY_LOGGABLE);
@@ -235,7 +235,7 @@ public class LogTests extends LogTestsBase {
     }
 
     @Test
-    @TestFor(issues = "XD-484")
+    @TestFor(issue = "XD-484")
     public void testSetHighAddress_XD_484() throws IOException {
         testSetHighAddress2();
         closeLog();

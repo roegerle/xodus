@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,9 @@ internal object Utils {
 
     @JvmStatic
     val unionSubtypes = parseBoolean(System.getProperty("jetbrains.exodus.query.unionSubtypesResults", "true"))
+
     @JvmStatic
-    val reduceUnionsOfLinksDepth: Int = getInteger("jetbrains.exodus.query.reduceUnionsOfLinksDepth", 20)
+    val reduceUnionsOfLinksDepth: Int = getInteger("jetbrains.exodus.query.reduceUnionsOfLinksDepth", 4)
 
     @JvmStatic
     fun safe_equals(left: Any?, right: Any?) = if (left != null) left == right else right == null

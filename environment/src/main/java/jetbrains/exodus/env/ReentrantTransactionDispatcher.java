@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ final class ReentrantTransactionDispatcher {
         return 1;
     }
 
-    void acquireTransaction(@NotNull final TransactionBase txn, @NotNull final Environment env) {
+    void acquireTransaction(@NotNull final ReadWriteTransaction txn, @NotNull final Environment env) {
         final Thread creatingThread = txn.getCreatingThread();
         int acquiredPermits;
         if (txn.isExclusive()) {
@@ -135,7 +135,7 @@ final class ReentrantTransactionDispatcher {
         }
     }
 
-    void releaseTransaction(@NotNull final TransactionBase txn) {
+    void releaseTransaction(@NotNull final ReadWriteTransaction txn) {
         releaseTransaction(txn.getCreatingThread(), txn.getAcquiredPermits());
     }
 
@@ -157,7 +157,7 @@ final class ReentrantTransactionDispatcher {
         }
     }
 
-    void downgradeTransaction(@NotNull final TransactionBase txn) {
+    void downgradeTransaction(@NotNull final ReadWriteTransaction txn) {
         downgradeTransaction(txn.getCreatingThread(), txn.getAcquiredPermits());
         txn.setAcquiredPermits(1);
     }

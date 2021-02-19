@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
-@SuppressWarnings({"unchecked"})
+@SuppressWarnings({"unchecked", "rawtypes"})
 public final class PropertyRangeIterable extends PropertyRangeOrValueIterableBase {
 
     @NotNull
@@ -129,7 +129,7 @@ public final class PropertyRangeIterable extends PropertyRangeOrValueIterableBas
 
             @Override
             public int getEntityTypeId() {
-                return PropertyRangeIterable.this.getEntityTypeId();
+                return entityTypeId;
             }
 
             @Override

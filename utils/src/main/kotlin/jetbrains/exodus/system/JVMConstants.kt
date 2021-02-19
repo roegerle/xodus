@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ object JVMConstants {
     val JAVA_MINOR_VERSION: Int
     val IS_JAVA8_OR_HIGHER: Boolean
     val IS_JAVA9_OR_HIGHER: Boolean
+
+    @JvmStatic
     val IS_ANDROID = System.getProperty("java.vendor").contains("Android")
     val IS_MAC = System.getProperty("os.name").contains("Mac")
 
@@ -33,7 +35,7 @@ object JVMConstants {
         val st = StringTokenizer(JAVA_SPEC_VERSION, ".")
         JAVA_MAJOR_VERSION = Integer.parseInt(st.nextToken())
         JAVA_MINOR_VERSION = if (st.hasMoreTokens()) Integer.parseInt(st.nextToken()) else 0
-        IS_JAVA8_OR_HIGHER = JAVA_MAJOR_VERSION == 1 && JAVA_MINOR_VERSION == 8
         IS_JAVA9_OR_HIGHER = JAVA_MAJOR_VERSION > 1 || (JAVA_MAJOR_VERSION == 1 && JAVA_MINOR_VERSION == 9)
+        IS_JAVA8_OR_HIGHER = IS_JAVA9_OR_HIGHER || (JAVA_MAJOR_VERSION == 1 && JAVA_MINOR_VERSION == 8)
     }
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ public class WindowsProcessKiller implements ProcessKiller {
             // for some reason pskill registration was not successful. If we still try to run it here, it might hang
             throw REGISTRATION_EXCEPTION;
         }
-        Runtime.getRuntime().exec(PS_KILL + id);
+        Runtime.getRuntime().exec(PS_KILL + " " + id);
     }
 
     @Override

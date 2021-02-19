@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,12 @@ public class EnvironmentStatistics extends Statistics<EnvironmentStatistics.Type
         BYTES_MOVED_BY_GC("Bytes moved by GC"),
         TRANSACTIONS("Transactions"),
         READONLY_TRANSACTIONS("Read-only transactions"),
+        GC_TRANSACTIONS("GC transactions"),
         ACTIVE_TRANSACTIONS("Active transactions"),
         FLUSHED_TRANSACTIONS("Flushed transactions"),
+        TRANSACTIONS_DURATION("Transactions duration"),
+        READONLY_TRANSACTIONS_DURATION("Read-only transactions duration"),
+        GC_TRANSACTIONS_DURATION("GC transactions duration"),
         DISK_USAGE("Disk usage"),
         UTILIZATION_PERCENT("Utilization percent");
 

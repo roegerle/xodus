@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ object SafeByteBufferCleaner {
         }
     }
 
+    @JvmStatic
     fun clean(buffer: ByteBuffer) {
         try {
             doPrivileged {
@@ -68,7 +69,9 @@ object SafeByteBufferCleaner {
                         // cleaner = ((DirectByteBuffer)buffer).cleaner()
                         val cleaner = dbbCleanerMethod.invoke(buffer)
                         // ((sun.misc.Cleaner)cleaner).clean()
-                        cleanMethod.invoke(cleaner)
+                        cleaner?.let {
+                            cleanMethod.invoke(cleaner)
+                        }
                     } else {
                         // for Android 5.1.1 try to call ((DirectByteBuffer)buffer).free()
                         if (JVMConstants.IS_ANDROID) {

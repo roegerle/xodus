@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -166,7 +166,7 @@ public abstract class PriorityQueueTest {
         assertEquals(new TestObject(0), queue.pop());
     }
 
-    @TestFor(issues = "XD-600")
+    @TestFor(issue = "XD-600")
     @Test
     public void mergePushedOut() {
         final PriorityQueue<Integer, TestObject> queue = createQueue();

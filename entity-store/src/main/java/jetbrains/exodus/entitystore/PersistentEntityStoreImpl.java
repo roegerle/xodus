@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -160,17 +160,13 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
         this.name = name;
         location = environment.getLocation();
 
+        readerWriterProvider = Objects.requireNonNull(((EnvironmentImpl) environment).getLog().getConfig().getReaderWriterProvider());
         // if database is in-memory then never create blobs in BlobVault
-        final String providerName = environment.getEnvironmentConfig().getLogDataReaderWriterProvider();
-        final DataReaderWriterProvider provider = DataReaderWriterProvider.getProvider(providerName);
-        if (provider == null) {
-            throw new InvalidSettingException("Unknown DataReaderWriterProvider: " + providerName);
-        }
-        readerWriterProvider = provider;
-        if (provider.isInMemory()) {
+        if (readerWriterProvider.isInMemory()) {
             config.setMaxInPlaceBlobSize(Integer.MAX_VALUE);
         }
-        if (provider.isReadonly()) {
+        // if database is read-only turn caching off since cached results cannot be invalidated
+        if (readerWriterProvider.isReadonly()) {
             config.setCachingDisabled(true);
         }
 
@@ -191,7 +187,7 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
 
         init();
 
-        if (provider instanceof WatchingFileDataReaderWriterProvider) {
+        if (readerWriterProvider instanceof WatchingFileDataReaderWriterProvider) {
             ((WatchingFileDataReader) ((EnvironmentImpl) environment).getLog().getConfig().getReader()).addNewDataListener((aLong, aLong2) -> {
                 environment.executeInReadonlyTransaction(txn -> {
                     entityTypes.invalidate(txn);
@@ -534,6 +530,10 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
         return transaction;
     }
 
+    public PersistentStoreTransaction beginTransactionAt(final long highAddress) {
+        return new PersistentStoreTransactionSnapshot(this, highAddress);
+    }
+
     public void registerTransaction(@NotNull final PersistentStoreTransaction txn) {
         final Thread thread = Thread.currentThread();
         Deque<PersistentStoreTransaction> stack = txns.get(thread);
@@ -605,6 +605,20 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
             PersistentSequence result = allSequences.get(sequenceName);
             if (result == null) {
                 result = new PersistentSequence(txn, sequences, sequenceName);
+                allSequences.put(sequenceName, result);
+            }
+            return result;
+        }
+    }
+
+    @NotNull
+    public PersistentSequence getSequence(@NotNull final PersistentStoreTransaction txn,
+                                          @NotNull final String sequenceName,
+                                          final long initialValue) {
+        synchronized (allSequences) {
+            PersistentSequence result = allSequences.get(sequenceName);
+            if (result == null) {
+                result = new PersistentSequence(txn, sequences, sequenceName, initialValue);
                 allSequences.put(sequenceName, result);
             }
             return result;
@@ -788,11 +802,11 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
                                @NotNull final PersistentEntity entity,
                                @NotNull final String propertyName,
                                @NotNull final Comparable value) {
-        final PropertyValue propValue = propertyTypes.dataToPropertyValue(value);
-        final ComparableValueType valueType = propValue.getType();
-        if (valueType.getBinding() == ComparableSetBinding.BINDING && ((ComparableSet) value).isEmpty()) {
+        if (value instanceof ComparableSet && ((ComparableSet) value).isEmpty()) {
             return deleteProperty(txn, entity, propertyName);
         }
+        final PropertyValue propValue = propertyTypes.dataToPropertyValue(value);
+        final ComparableValueType valueType = propValue.getType();
         final PersistentEntityId entityId = entity.getId();
         final int propertyId = getPropertyId(txn, propertyName, true);
         final ByteIterable oldValueEntry = getRawProperty(txn, entityId, propertyId);
@@ -1547,10 +1561,12 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
     }
 
     public int getEntityTypeId(@NotNull final PersistentStoreTransaction txn, @NotNull final String entityType, final boolean allowCreate) {
+        Objects.requireNonNull(entityType, "Entity type cannot be null");
         return allowCreate ? entityTypes.getOrAllocateId(txn, entityType) : entityTypes.getId(txn, entityType);
     }
 
     public int getEntityTypeId(@NotNull final TxnProvider txnProvider, @NotNull final String entityType, final boolean allowCreate) {
+        Objects.requireNonNull(entityType, "Entity type cannot be null");
         return allowCreate ? entityTypes.getOrAllocateId(txnProvider, entityType) : entityTypes.getId(txnProvider, entityType);
     }
 
@@ -1706,6 +1722,10 @@ public class PersistentEntityStoreImpl implements PersistentEntityStore, FlushLo
 
     public int getLinkId(@NotNull final TxnProvider txnProvider, @NotNull final String linkName, final boolean allowCreate) {
         return allowCreate ? linkIds.getOrAllocateId(txnProvider, linkName) : linkIds.getId(txnProvider, linkName);
+    }
+
+    public void deleteLinkName(@NotNull final PersistentStoreTransaction txn, @NotNull final String linkName) {
+        linkIds.delete(txn, linkName);
     }
 
     @Nullable

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -178,10 +178,6 @@ public final class EntityIterableCache {
         return processor.isDispatcherThread();
     }
 
-    boolean isCachingQueueFull() {
-        return processor.pendingJobs() > cacheAdapter.size();
-    }
-
     @NotNull
     EntityIterableCacheAdapter getCacheAdapter() {
         return cacheAdapter;
@@ -220,7 +216,7 @@ public final class EntityIterableCache {
             this.isConsistent = isConsistent;
             cancellingPolicy = new CachingCancellingPolicy(isConsistent && handle.isConsistent());
             setProcessor(processor);
-            if (!isCachingQueueFull() && queue(Priority.normal)) {
+            if (queue(Priority.normal)) {
                 stats.incTotalJobsEnqueued();
                 if (!isConsistent) {
                     stats.incTotalCountJobsEnqueued();
@@ -255,8 +251,8 @@ public final class EntityIterableCache {
         @Override
         protected void execute() {
             final long started;
-            // don't try to cache if the queue is full or if it is too late
-            if (isCachingQueueFull() || !cancellingPolicy.canStartAt(started = System.currentTimeMillis())) {
+            // don't try to cache if it is too late
+            if (!cancellingPolicy.canStartAt(started = System.currentTimeMillis())) {
                 stats.incTotalJobsNotStarted();
                 return;
             }
@@ -306,7 +302,7 @@ public final class EntityIterableCache {
                     }
                     if (logger.isInfoEnabled()) {
                         final String action = cancellingPolicy.isConsistent ? "Caching" : "Caching (inconsistent)";
-                        logger.info(action + " forcedly stopped, " + e.reason.message + ": " + getStringPresentation(config, handle));
+                        logger.info(action + " forcibly stopped, " + e.reason.message + ": " + getStringPresentation(config, handle));
                     }
                 }
             });

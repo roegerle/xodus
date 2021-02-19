@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,11 +68,11 @@ public class LongLinkedHashMap<V> extends AbstractHashMap<Long, V> {
             back = e;
         }
         this.top = e;
-        size += 1;
+        _size += 1;
 
         if (removeEldestEntry(back)) {
             remove(back.key);
-        } else if (size > capacity) {
+        } else if (_size > capacity) {
             rehash(HashUtil.nextCapacity(capacity));
         }
         return null;
@@ -108,7 +108,7 @@ public class LongLinkedHashMap<V> extends AbstractHashMap<Long, V> {
             }
         }
         unlink(e);
-        size -= 1;
+        _size -= 1;
         return e.value;
     }
 
@@ -135,7 +135,7 @@ public class LongLinkedHashMap<V> extends AbstractHashMap<Long, V> {
         allocateTable(HashUtil.getCeilingPrime((int) (capacity / loadFactor)));
         top = back = null;
         this.capacity = capacity;
-        size = 0;
+        _size = 0;
     }
 
     @Override

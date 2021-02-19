@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,12 +32,6 @@ open class Memory {
     internal val allBlocks: Collection<Block>
         get() = data.values
 
-    internal fun getBlockData(address: Long): Block {
-        return data.synchronized {
-            get(address)
-        }
-    }
-
     internal fun getOrCreateBlockData(address: Long, length: Long): Block {
         return data.synchronized {
             get(address)?.also {
@@ -58,13 +52,13 @@ open class Memory {
         val removed = data.synchronized {
             remove(blockAddress)
         }
-        val result = removed != null
-        if (result) {
+        removed?.let {
             data.synchronized {
                 removedBlocks.cacheObject(blockAddress, removed)
             }
+            return true
         }
-        return result
+        return false
     }
 
     internal fun clear() = data.synchronized { clear() }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,16 @@ import jetbrains.exodus.core.dataStructures.ObjectCacheBase;
 import jetbrains.exodus.core.dataStructures.Pair;
 import jetbrains.exodus.core.execution.SharedTimer;
 import jetbrains.exodus.crypto.StreamCipherProvider;
+import jetbrains.exodus.debug.StackTrace;
+import jetbrains.exodus.debug.TxnProfiler;
 import jetbrains.exodus.entitystore.MetaServer;
+import jetbrains.exodus.env.management.DatabaseProfiler;
 import jetbrains.exodus.env.management.EnvironmentConfigWithOperations;
 import jetbrains.exodus.gc.GarbageCollector;
 import jetbrains.exodus.gc.UtilizationProfile;
 import jetbrains.exodus.io.DataReaderWriterProvider;
 import jetbrains.exodus.io.RemoveBlockType;
+import jetbrains.exodus.io.StorageTypeNotAllowedException;
 import jetbrains.exodus.log.DataIterator;
 import jetbrains.exodus.log.Log;
 import jetbrains.exodus.log.LogConfig;
@@ -38,11 +42,13 @@ import jetbrains.exodus.tree.TreeMetaInfo;
 import jetbrains.exodus.tree.btree.BTree;
 import jetbrains.exodus.tree.btree.BTreeBalancePolicy;
 import jetbrains.exodus.util.DeferredIO;
+import jetbrains.exodus.util.IOUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.management.InstanceAlreadyExistsException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -79,13 +85,16 @@ public class EnvironmentImpl implements Environment {
     private final ReentrantReadWriteLock.ReadLock metaReadLock;
     final ReentrantReadWriteLock.WriteLock metaWriteLock;
     private final ReentrantTransactionDispatcher txnDispatcher;
-    private final ReentrantTransactionDispatcher roTxnDispatcher;
     @NotNull
     private final EnvironmentStatistics statistics;
+    @Nullable
+    private final TxnProfiler txnProfiler;
     @Nullable
     private final jetbrains.exodus.env.management.EnvironmentConfig configMBean;
     @Nullable
     private final jetbrains.exodus.env.management.EnvironmentStatistics statisticsMBean;
+    @Nullable
+    private final DatabaseProfiler profilerMBean;
 
     /**
      * Throwable caught during commit after which rollback of highAddress failed.
@@ -109,7 +118,10 @@ public class EnvironmentImpl implements Environment {
     EnvironmentImpl(@NotNull final Log log, @NotNull final EnvironmentConfig ec) {
         this.log = log;
         this.ec = ec;
-        applyEnvironmentSettings(log.getLocation(), ec);
+        final String logLocation = log.getLocation();
+        applyEnvironmentSettings(logLocation, ec);
+
+        checkStorageType(logLocation, ec);
 
         final DataReaderWriterProvider readerWriterProvider = log.getConfig().getReaderWriterProvider();
         readerWriterProvider.onEnvironmentCreated(this);
@@ -133,18 +145,20 @@ public class EnvironmentImpl implements Environment {
         metaWriteLock = metaLock.writeLock();
 
         txnDispatcher = new ReentrantTransactionDispatcher(ec.getEnvMaxParallelTxns());
-        roTxnDispatcher = new ReentrantTransactionDispatcher(ec.getEnvMaxParallelReadonlyTxns());
 
         statistics = new EnvironmentStatistics(this);
-        if (ec.isManagementEnabled()) {
-            configMBean = ec.getManagementOperationsRestricted() ?
-                new jetbrains.exodus.env.management.EnvironmentConfig(this) :
-                new EnvironmentConfigWithOperations(this);
+        txnProfiler = ec.getProfilerEnabled() ? new TxnProfiler() : null;
+        final jetbrains.exodus.env.management.EnvironmentConfig configMBean =
+            ec.isManagementEnabled() ? createConfigMBean(this) : null;
+        if (configMBean != null) {
+            this.configMBean = configMBean;
             // if we don't gather statistics then we should not expose corresponding managed bean
             statisticsMBean = ec.getEnvGatherStatistics() ? new jetbrains.exodus.env.management.EnvironmentStatistics(this) : null;
+            profilerMBean = txnProfiler == null ? null : new DatabaseProfiler(this);
         } else {
-            configMBean = null;
+            this.configMBean = null;
             statisticsMBean = null;
+            profilerMBean = null;
         }
 
         throwableOnCommit = null;
@@ -157,7 +171,7 @@ public class EnvironmentImpl implements Environment {
         cipherKey = logConfig.getCipherKey();
         cipherBasicIV = logConfig.getCipherBasicIV();
 
-        loggerInfo("Exodus environment created: " + log.getLocation());
+        loggerInfo("Exodus environment created: " + logLocation);
     }
 
     @Override
@@ -185,6 +199,11 @@ public class EnvironmentImpl implements Environment {
 
     public GarbageCollector getGC() {
         return gc;
+    }
+
+    @Nullable
+    public TxnProfiler getTxnProfiler() {
+        return txnProfiler;
     }
 
     @Override
@@ -259,6 +278,11 @@ public class EnvironmentImpl implements Environment {
                 return true;
             }
         };
+    }
+
+    public ReadonlyTransaction beginTransactionAt(final long highAddress) {
+        checkIsOperative();
+        return new ReadonlyTransaction(this, highAddress);
     }
 
     @Override
@@ -337,7 +361,7 @@ public class EnvironmentImpl implements Environment {
     @Override
     public void clear() {
         final Thread currentThread = Thread.currentThread();
-        if (txnDispatcher.getThreadPermits(currentThread) != 0 || roTxnDispatcher.getThreadPermits(currentThread) != 0) {
+        if (txnDispatcher.getThreadPermits(currentThread) != 0) {
             throw new ExodusException("Environment.clear() can't proceed if there is a transaction in current thread");
         }
         runAllTransactionSafeTasks();
@@ -348,24 +372,19 @@ public class EnvironmentImpl implements Environment {
         try {
             final int permits = txnDispatcher.acquireExclusiveTransaction(currentThread);// wait for and stop all writing transactions
             try {
-                final int roPermits = roTxnDispatcher.acquireExclusiveTransaction(currentThread);// wait for and stop all read-only transactions
-                try {
-                    synchronized (commitLock) {
-                        metaWriteLock.lock();
-                        try {
-                            gc.clear();
-                            log.clear();
-                            invalidateStoreGetCache();
-                            throwableOnCommit = null;
-                            final Pair<MetaTreeImpl, Integer> meta = MetaTreeImpl.create(this);
-                            metaTree = meta.getFirst();
-                            structureId.set(meta.getSecond());
-                        } finally {
-                            metaWriteLock.unlock();
-                        }
+                synchronized (commitLock) {
+                    metaWriteLock.lock();
+                    try {
+                        gc.clear();
+                        log.clear();
+                        invalidateStoreGetCache();
+                        throwableOnCommit = null;
+                        final Pair<MetaTreeImpl, Integer> meta = MetaTreeImpl.create(this);
+                        metaTree = meta.getFirst();
+                        structureId.set(meta.getSecond());
+                    } finally {
+                        metaWriteLock.unlock();
                     }
-                } finally {
-                    roTxnDispatcher.releaseTransaction(currentThread, roPermits);
                 }
             } finally {
                 txnDispatcher.releaseTransaction(currentThread, permits);
@@ -392,6 +411,9 @@ public class EnvironmentImpl implements Environment {
         }
         if (statisticsMBean != null) {
             statisticsMBean.unregister();
+        }
+        if (profilerMBean != null) {
+            profilerMBean.unregister();
         }
         runAllTransactionSafeTasks();
         // in order to avoid deadlock, do not finish gc inside lock
@@ -421,6 +443,9 @@ public class EnvironmentImpl implements Environment {
             } else {
                 storeGetCacheHitRate = storeGetCache.hitRate();
                 storeGetCache.close();
+            }
+            if (txnProfiler != null) {
+                txnProfiler.dump();
             }
             throwableOnClose = new EnvironmentClosedException();
             throwableOnCommit = throwableOnClose;
@@ -548,9 +573,22 @@ public class EnvironmentImpl implements Environment {
     }
 
     protected void finishTransaction(@NotNull final TransactionBase txn) {
-        releaseTransaction(txn);
+        if (!txn.isReadonly()) {
+            releaseTransaction(txn);
+        }
         txns.remove(txn);
         txn.setIsFinished();
+        final long duration = System.currentTimeMillis() - txn.getCreated();
+        if (txn.isReadonly()) {
+            statistics.getStatisticsItem(READONLY_TRANSACTIONS).incTotal();
+            statistics.getStatisticsItem(READONLY_TRANSACTIONS_DURATION).addTotal(duration);
+        } else if (txn.isGCTransaction()) {
+            statistics.getStatisticsItem(GC_TRANSACTIONS).incTotal();
+            statistics.getStatisticsItem(GC_TRANSACTIONS_DURATION).addTotal(duration);
+        } else {
+            statistics.getStatisticsItem(TRANSACTIONS).incTotal();
+            statistics.getStatisticsItem(TRANSACTIONS_DURATION).addTotal(duration);
+        }
         runTransactionSafeTasks();
     }
 
@@ -573,16 +611,19 @@ public class EnvironmentImpl implements Environment {
 
     void acquireTransaction(@NotNull final TransactionBase txn) {
         checkIfTransactionCreatedAgainstThis(txn);
-        (txn.isReadonly() ? roTxnDispatcher : txnDispatcher).acquireTransaction(txn, this);
+        txnDispatcher.acquireTransaction(throwIfReadonly(
+            txn, "TxnDispatcher can't acquire permits for read-only transaction"), this);
     }
 
     void releaseTransaction(@NotNull final TransactionBase txn) {
         checkIfTransactionCreatedAgainstThis(txn);
-        (txn.isReadonly() ? roTxnDispatcher : txnDispatcher).releaseTransaction(txn);
+        txnDispatcher.releaseTransaction(throwIfReadonly(
+            txn, "TxnDispatcher can't release permits for read-only transaction"));
     }
 
     void downgradeTransaction(@NotNull final TransactionBase txn) {
-        (txn.isReadonly() ? roTxnDispatcher : txnDispatcher).downgradeTransaction(txn);
+        txnDispatcher.downgradeTransaction(throwIfReadonly(
+            txn, "TxnDispatcher can't downgrade read-only transaction"));
     }
 
     boolean shouldTransactionBeExclusive(@NotNull final ReadWriteTransaction txn) {
@@ -683,6 +724,8 @@ public class EnvironmentImpl implements Environment {
                 } finally {
                     metaWriteLock.unlock();
                 }
+                // update txn profiler within commitLock
+                updateTxnProfiler(txn, initialHighAddress, resultingHighAddress);
             } catch (Throwable t) { // pokemon exception handling to decrease try/catch block overhead
                 loggerError("Failed to flush transaction", t);
                 if (writeConfirmed) {
@@ -983,7 +1026,7 @@ public class EnvironmentImpl implements Environment {
     private void reportAliveTransactions(final boolean debug) {
         if (transactionTimeout() == 0) {
             String stacksUnavailable = "Transactions stack traces are not available, " +
-                    "set '" + EnvironmentConfig.ENV_MONITOR_TXNS_TIMEOUT + " > 0'";
+                "set '" + EnvironmentConfig.ENV_MONITOR_TXNS_TIMEOUT + " > 0'";
             if (debug) {
                 loggerDebug(stacksUnavailable);
             } else {
@@ -991,11 +1034,11 @@ public class EnvironmentImpl implements Environment {
             }
         } else {
             forEachActiveTransaction(txn -> {
-                final Throwable trace = ((TransactionBase) txn).getTrace();
+                final StackTrace trace = ((TransactionBase) txn).getTrace();
                 if (debug) {
-                    loggerDebug("Alive transaction: ", trace);
+                    loggerDebug("Alive transaction:\n" + trace);
                 } else {
-                    loggerError("Alive transaction: ", trace);
+                    loggerError("Alive transaction:\n" + trace);
                 }
             });
         }
@@ -1033,6 +1076,20 @@ public class EnvironmentImpl implements Environment {
             new StoreGetCache(storeGetCacheSize, ec.getEnvStoreGetCacheMinTreeSize(), ec.getEnvStoreGetCacheMaxValueSize());
     }
 
+    private void updateTxnProfiler(TransactionBase txn, long initialHighAddress, long resultingHighAddress) {
+        if (txnProfiler != null) {
+            final long writtenBytes = resultingHighAddress - initialHighAddress;
+            if (txn.isGCTransaction()) {
+                txnProfiler.incGcTransaction();
+                txnProfiler.addGcMovedBytes(writtenBytes);
+            } else if (txn.isReadonly()) {
+                txnProfiler.addReadonlyTxn(txn);
+            } else {
+                txnProfiler.addTxn(txn, writtenBytes);
+            }
+        }
+    }
+
     private static void applyEnvironmentSettings(@NotNull final String location,
                                                  @NotNull final EnvironmentConfig ec) {
         final File propsFile = new File(location, ENVIRONMENT_PROPERTIES_FILE);
@@ -1048,6 +1105,35 @@ public class EnvironmentImpl implements Environment {
             } catch (IOException e) {
                 throw ExodusException.toExodusException(e);
             }
+        }
+    }
+
+    private static void checkStorageType(@NotNull final String location, @NotNull final EnvironmentConfig ec) {
+        if (ec.getLogDataReaderWriterProvider().equals(DataReaderWriterProvider.DEFAULT_READER_WRITER_PROVIDER)) {
+            final File databaseDir = new File(location);
+            if (!ec.isLogAllowRemovable() && IOUtil.isRemovableFile(databaseDir)) {
+                throw new StorageTypeNotAllowedException("Database on removable storage is not allowed");
+            }
+            if (!ec.isLogAllowRemote() && IOUtil.isRemoteFile(databaseDir)) {
+                throw new StorageTypeNotAllowedException("Database on remote storage is not allowed");
+            }
+            if (!ec.isLogAllowRamDisk() && IOUtil.isRamDiskFile(databaseDir)) {
+                throw new StorageTypeNotAllowedException("Database on RAM disk is not allowed");
+            }
+        }
+    }
+
+    @Nullable
+    private static jetbrains.exodus.env.management.EnvironmentConfig createConfigMBean(@NotNull final EnvironmentImpl e) {
+        try {
+            return e.ec.getManagementOperationsRestricted() ?
+                new jetbrains.exodus.env.management.EnvironmentConfig(e) :
+                new EnvironmentConfigWithOperations(e);
+        } catch (RuntimeException ex) {
+            if (ex.getCause() instanceof InstanceAlreadyExistsException) {
+                return null;
+            }
+            throw ex;
         }
     }
 
@@ -1096,7 +1182,7 @@ public class EnvironmentImpl implements Environment {
         @Override
         public void beforeSettingChanged(@NotNull String key, @NotNull Object value, @NotNull Map<String, Object> context) {
             if (key.equals(EnvironmentConfig.ENV_IS_READONLY)) {
-                if (log.getConfig().getReaderWriterProvider().isReadonly()) {
+                if (log.getConfig().isReadonlyReaderWriterProvider()) {
                     throw new InvalidSettingException("Can't modify read-only state in run time since DataReaderWriterProvider is read-only");
                 }
                 if (Boolean.TRUE.equals(value)) {

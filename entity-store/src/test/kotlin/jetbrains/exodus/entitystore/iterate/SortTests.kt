@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -280,7 +280,7 @@ class SortTests : EntityStoreTestBase() {
         (sorted as EntityIterableBase).getOrCreateCachedInstance(txn)
     }
 
-    @TestFor(issues = ["XD-520"])
+    @TestFor(issue = "XD-520")
     fun testInvalidationOfSortResults() {
         val txn = storeTransaction
         val issue = txn.newEntity("Issue")
@@ -301,7 +301,7 @@ class SortTests : EntityStoreTestBase() {
         Assert.assertTrue("EntityIterable wasn't cached", false)
     }
 
-    @TestFor(issues = ["XD-609"])
+    @TestFor(issue = "XD-609")
     fun testSortTinySourceWithLargeIndex() {
         // switch in-memory sort on
         entityStore.config.isDebugAllowInMemorySort = true
@@ -326,7 +326,7 @@ class SortTests : EntityStoreTestBase() {
         println("Sorting took " + (System.currentTimeMillis() - start))
     }
 
-    @TestFor(issues = ["XD-670"])
+    @TestFor(issue = "XD-670")
     fun testSortTinySourceWithNullPropsWithLargeIndex() {
         // switch in-memory sort on
         entityStore.config.isDebugAllowInMemorySort = true

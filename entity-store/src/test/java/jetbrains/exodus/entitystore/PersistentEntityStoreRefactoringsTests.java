@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import jetbrains.exodus.bindings.ComparableSet;
 
 public class PersistentEntityStoreRefactoringsTests extends EntityStoreTestBase {
 
-    @TestFor(issues = "XD-553", testForClass = PersistentEntityStoreRefactorings.class)
+    @TestFor(issue = "XD-553", testForClass = PersistentEntityStoreRefactorings.class)
     public void testConsistentPropsRefactoringForComparableSetValues() {
 
         // at first, disable entity iterables' caching

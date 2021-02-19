@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static jetbrains.exodus.env.EnvironmentStatistics.Type.TRANSACTIONS;
-
 public class ReadWriteTransaction extends TransactionBase {
 
     @NotNull
@@ -43,6 +41,7 @@ public class ReadWriteTransaction extends TransactionBase {
     @Nullable
     private Runnable commitHook;
     private int replayCount;
+    private int acquiredPermits;
 
     ReadWriteTransaction(@NotNull final EnvironmentImpl env,
                          @Nullable final Runnable beginHook,
@@ -63,7 +62,6 @@ public class ReadWriteTransaction extends TransactionBase {
         replayCount = 0;
         setExclusive(isExclusive() | env.shouldTransactionBeExclusive(this));
         env.holdNewestSnapshotBy(this);
-        env.getStatistics().getStatisticsItem(TRANSACTIONS).incTotal();
     }
 
     ReadWriteTransaction(@NotNull final TransactionBase origin, @Nullable final Runnable beginHook) {
@@ -78,7 +76,6 @@ public class ReadWriteTransaction extends TransactionBase {
         setExclusive(env.shouldTransactionBeExclusive(this));
         env.acquireTransaction(this);
         env.registerTransaction(this);
-        env.getStatistics().getStatisticsItem(TRANSACTIONS).incTotal();
     }
 
     public boolean isIdempotent() {
@@ -219,6 +216,14 @@ public class ReadWriteTransaction extends TransactionBase {
         ++replayCount;
     }
 
+    int getAcquiredPermits() {
+        return acquiredPermits;
+    }
+
+    void setAcquiredPermits(final int acquiredPermits) {
+        this.acquiredPermits = acquiredPermits;
+    }
+
     boolean isStoreNew(@NotNull final String name) {
         return createdStores.containsKey(name);
     }
@@ -303,6 +308,15 @@ public class ReadWriteTransaction extends TransactionBase {
     @Override
     Runnable getBeginHook() {
         return beginHook;
+    }
+
+    @Override
+    protected boolean setIsFinished() {
+        if (super.setIsFinished()) {
+            mutableTrees.clear();
+            return true;
+        }
+        return false;
     }
 
     private void doRevert() {

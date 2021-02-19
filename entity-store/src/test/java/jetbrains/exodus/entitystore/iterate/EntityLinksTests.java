@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -203,7 +203,7 @@ public class EntityLinksTests extends EntityStoreTestBase {
         issue.setLink("comment", comment);
         txn.flush();
         Assert.assertEquals(comment, issue.getLink("comment"));
-        issue.setLink("comment", null);
+        issue.setLink("comment", (Entity) null);
         txn.flush();
         Assert.assertNull(issue.getLink("comment"));
     }
@@ -301,7 +301,7 @@ public class EntityLinksTests extends EntityStoreTestBase {
         }
     }
 
-    @TestFor(issues = "XD-517")
+    @TestFor(issue = "XD-517")
     public void testInvalidationOfToLinks() throws InterruptedException {
         final PersistentStoreTransaction txn = getStoreTransaction();
         PersistentEntity issue = txn.newEntity("Issue");
@@ -324,7 +324,7 @@ public class EntityLinksTests extends EntityStoreTestBase {
         }
     }
 
-    @TestFor(issues = "XD-518")
+    @TestFor(issue = "XD-518")
     public void testInvalidationFromSetLinks() throws InterruptedException {
         final PersistentStoreTransaction txn = getStoreTransaction();
         PersistentEntity issue = txn.newEntity("Issue");

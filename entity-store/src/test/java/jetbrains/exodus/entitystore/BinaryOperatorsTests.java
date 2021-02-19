@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -236,7 +236,7 @@ public class BinaryOperatorsTests extends EntityStoreTestBase {
         Assert.assertEquals(30, (int) txn.find("Issue", "name", "Test issue #0").concat(txn.find("Issue", "name", "Test issue #1")).concat(txn.find("Issue", "name", "Test issue #2")).size());
     }
 
-    @TestFor(issues = "XD-566")
+    @TestFor(issue = "XD-566")
     public void testConcat2() {
         final StoreTransaction txn = getStoreTransaction();
         Objects.requireNonNull(txn).newEntity("Issue");

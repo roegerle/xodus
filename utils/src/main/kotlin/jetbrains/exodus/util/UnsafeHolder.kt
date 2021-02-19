@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 - 2020 JetBrains s.r.o.
+ * Copyright 2010 - 2021 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ object UnsafeHolder {
         unsafeClass.getDeclaredField("theUnsafe").apply { isAccessible = true }[null]
     }
 
-    internal fun <T> doPrivileged(f: () -> T): T {
+    fun <T> doPrivileged(f: () -> T): T {
         return AccessController.doPrivileged(PrivilegedExceptionAction<T> {
             f()
         })
